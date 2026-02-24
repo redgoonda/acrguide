@@ -747,11 +747,7 @@ const GUIDELINES = {
         { value: 'neg', label: 'Negative (no early enhancement or diffuse enhancement)' },
         { value: 'pos', label: 'Positive (focal, earlier than or simultaneous with adjacent tissue)' },
       ]),
-      sectionField('PSA & Volume Calculator'),
-      numField('psa',     'Serum PSA',                   'ng/mL', 'e.g. 7.2'),
-      numField('prost_l', 'Prostate Length (AP)',         'cm',    'e.g. 4.8', 'Anteroposterior on axial image'),
-      numField('prost_w', 'Prostate Width (transverse)',  'cm',    'e.g. 4.2', 'Transverse on axial image'),
-      numField('prost_h', 'Prostate Height (SI)',         'cm',    'e.g. 3.8', 'Craniocaudal on sagittal/coronal'),
+
     ],
     compute(f) {
       const t2  = parseInt(f.t2)  || 1;
@@ -784,78 +780,112 @@ const GUIDELINES = {
         'Equivocal PI-RADS 3 lesions in the PZ with positive DCE should be upgraded to PI-RADS 4.',
       ];
 
-      // ── PSA density calculation ──────────────────────────────────────────
+      const dceLine  = dce ? 'positive' : 'negative';
+      const copyString = `Prostate mpMRI (PI-RADS v2.1): ${c.label} lesion in the ${zone} (T2: ${t2}, DWI: ${dwi}, DCE: ${dceLine}). ${c.mgmt}`;
+
+      const scoreBox = `<div class="sub-result"><div class="sub-result-title">Score summary</div>
+        Zone: ${pz ? 'Peripheral' : 'Transition'} &nbsp;|&nbsp; T2: ${t2} &nbsp;|&nbsp; DWI: ${dwi} &nbsp;|&nbsp; DCE: ${dce ? 'Positive' : 'Negative'} &nbsp;|&nbsp; <strong>PI-RADS: ${pirads}</strong></div>`;
+
+      return result(c.col, `${c.label} — ${c.mgmt}`, notes, scoreBox, copyString);
+    },
+  },
+
+  // ════════════════════════════════════════════════════════ PSA DENSITY ════════
+
+  psa_density: {
+    name: 'PSA Density Calculator',
+    source: 'EAU / AUA Guidelines',
+    desc: 'Prostate volume (ellipsoid formula) and PSA density with auto-generated report string',
+    fields: [
+      numField('psa',     'Serum PSA',                  'ng/mL', 'e.g. 7.2'),
+      numField('prost_l', 'Prostate Length (AP)',        'cm',    'e.g. 4.8', 'Anteroposterior on axial MRI/US'),
+      numField('prost_w', 'Prostate Width (transverse)', 'cm',    'e.g. 4.2', 'Transverse dimension on axial image'),
+      numField('prost_h', 'Prostate Height (SI)',        'cm',    'e.g. 3.8', 'Craniocaudal on sagittal/coronal image'),
+    ],
+    compute(f) {
       const psa = parseFloat(f.psa);
       const pl  = parseFloat(f.prost_l);
       const pw  = parseFloat(f.prost_w);
       const ph  = parseFloat(f.prost_h);
 
-      let volHtml = '';
-      let copyString = '';
+      if (isNaN(pl) || isNaN(pw) || isNaN(ph) || pl <= 0 || pw <= 0 || ph <= 0) return null;
+      if (isNaN(psa) || psa <= 0) return null;
 
-      const hasVol = !isNaN(pl) && !isNaN(pw) && !isNaN(ph) && pl > 0 && pw > 0 && ph > 0;
-      const hasPSA = !isNaN(psa) && psa > 0;
+      const volRaw  = pl * pw * ph * 0.52;
+      const vol     = volRaw.toFixed(1);
+      const psadRaw = psa / volRaw;
+      const psad    = psadRaw.toFixed(3);
 
-      if (hasVol) {
-        const vol   = (pl * pw * ph * 0.52).toFixed(1);
-        const volRaw = pl * pw * ph * 0.52;
-
-        let psadRow = '';
-        let psadLine = '';
-        if (hasPSA) {
-          const psad    = psa / volRaw;
-          const psadStr = psad.toFixed(3);
-          const psadCol = psad >= 0.15 ? '#c0392b' : psad >= 0.10 ? '#e67e22' : '#27ae60';
-          const psadLabel = psad >= 0.15
-            ? 'Elevated (≥10.15) — increased risk of csPCa'
-            : psad >= 0.10
-            ? 'Borderline (0.10–0.15) — clinical correlation needed'
-            : 'Normal (<0.10)';
-
-          psadRow = `<tr><td><strong>PSA Density</strong></td>
-            <td><strong style="color:${psadCol}">${psadStr} ng/mL/cc</strong></td>
-            <td style="color:${psadCol};font-size:.78rem">${psadLabel}</td></tr>`;
-
-          psadLine = `PSA: ${psa} ng/mL. PSA density: ${psadStr} ng/mL/cc (${psadLabel}).`;
-        } else if (hasPSA === false && f.psa !== '') {
-          psadRow = '';
-        }
-
-        volHtml = `<div class="sub-result mt-2">
-          <div class="sub-result-title">PSA &amp; Volume</div>
-          <table style="width:100%;font-size:.82rem;border-collapse:collapse">
-            <tr>
-              <td style="padding:2px 8px 2px 0;width:38%"><strong>Prostate volume</strong></td>
-              <td style="padding:2px 8px 2px 0">${vol} mL</td>
-              <td style="font-size:.77rem;color:#5c7a96">${pl} &times; ${pw} &times; ${ph} cm (ellipsoid)</td>
-            </tr>
-            ${hasPSA ? `<tr><td style="padding:2px 8px 2px 0"><strong>PSA</strong></td><td>${psa} ng/mL</td><td></td></tr>` : ''}
-            ${psadRow}
-          </table>
-        </div>`;
-
-        // ── Generate report copy string ────────────────────────────────────
-        const dceLine  = dce ? 'positive' : 'negative';
-        const piLine   = `${c.label} lesion in the ${zone} (T2: ${t2}, DWI: ${dwi}, DCE: ${dceLine}).`;
-        const volLine  = `Prostate volume: ${vol} mL (${pl} × ${pw} × ${ph} cm, ellipsoid formula).`;
-        const mgmtLine = c.mgmt;
-
-        copyString = hasPSA
-          ? `Prostate mpMRI (PI-RADS v2.1): ${piLine} ${volLine} ${psadLine} ${mgmtLine}`
-          : `Prostate mpMRI (PI-RADS v2.1): ${piLine} ${volLine} ${mgmtLine}`;
+      let colour, label, interp;
+      if (psadRaw >= 0.20) {
+        colour = 'red';
+        label  = 'High';
+        interp = 'PSAD ≥20.20 ng/mL/cc — high risk of clinically significant PCa. Biopsy strongly recommended regardless of PI-RADS score.';
+      } else if (psadRaw >= 0.15) {
+        colour = 'orange';
+        label  = 'Elevated';
+        interp = 'PSAD 0.15–0.20 ng/mL/cc — elevated risk. Supports biopsy at PI-RADS 3 and above.';
+      } else if (psadRaw >= 0.10) {
+        colour = 'yellow';
+        label  = 'Borderline';
+        interp = 'PSAD 0.10–0.15 ng/mL/cc — borderline. Use in conjunction with PI-RADS score and clinical context.';
       } else {
-        // No volume — generate simpler copy string if PI-RADS scored
-        if (f.zone) {
-          const dceLine = dce ? 'positive' : 'negative';
-          copyString = `Prostate mpMRI (PI-RADS v2.1): ${c.label} lesion in the ${zone} (T2: ${t2}, DWI: ${dwi}, DCE: ${dceLine}). ${c.mgmt}`;
-        }
+        colour = 'green';
+        label  = 'Normal';
+        interp = 'PSAD <0.10 ng/mL/cc — low risk. Active surveillance may be appropriate for PI-RADS 3 lesions.';
       }
 
-      const scoreBox = `<div class="sub-result"><div class="sub-result-title">Score summary</div>
-        Zone: ${pz ? 'Peripheral' : 'Transition'} &nbsp;|&nbsp; T2: ${t2} &nbsp;|&nbsp; DWI: ${dwi} &nbsp;|&nbsp; DCE: ${dce ? 'Positive' : 'Negative'} &nbsp;|&nbsp; <strong>PI-RADS: ${pirads}</strong></div>`;
+      const psadCol = colour === 'red' ? '#c0392b' : colour === 'orange' ? '#e67e22' : colour === 'yellow' ? '#b8860b' : '#27ae60';
 
-      return result(c.col, `${c.label} — ${c.mgmt}`, notes, scoreBox + volHtml, copyString);
+      const notes = [
+        'Ellipsoid formula: Volume = Length × Width × Height × 0.52.',
+        'PSAD = PSA / prostate volume (ng/mL/cc = ng/mL/mL).',
+        'PSAD ≥0.15 is the widely used threshold to support biopsy in equivocal (PI-RADS 3) lesions.',
+        'Transition zone PSAD (PSAD-TZ) may be more specific but requires separate TZ volume measurement.',
+      ];
+
+      const extraHtml = `<div class="sub-result">
+        <div class="sub-result-title">Calculation</div>
+        <table style="width:100%;font-size:.84rem;border-collapse:collapse">
+          <tr>
+            <td style="padding:3px 12px 3px 0;width:40%"><strong>Prostate volume</strong></td>
+            <td><strong>${vol} mL</strong></td>
+            <td style="font-size:.77rem;color:#5c7a96;padding-left:8px">${pl} × ${pw} × ${ph} cm</td>
+          </tr>
+          <tr>
+            <td style="padding:3px 12px 3px 0"><strong>PSA</strong></td>
+            <td>${psa} ng/mL</td><td></td>
+          </tr>
+          <tr>
+            <td style="padding:3px 12px 3px 0"><strong>PSA density</strong></td>
+            <td><strong style="color:${psadCol}">${psad} ng/mL/cc</strong></td>
+            <td style="font-size:.77rem;color:${psadCol};padding-left:8px">${label}</td>
+          </tr>
+        </table>
+      </div>`;
+
+      const copyString = `Prostate volume: ${vol} mL (${pl} × ${pw} × ${ph} cm, ellipsoid formula). PSA: ${psa} ng/mL. PSA density: ${psad} ng/mL/cc (${label.toLowerCase()}). ${interp}`;
+
+      return result(colour, interp, notes, extraHtml, copyString);
     },
+    criteria: [
+      { title: 'PSAD Thresholds', items: [
+        { label: 'Normal — <0.10 ng/mL/cc', risk: 'Low', riskCol: 'cr-green',
+          desc: 'Low probability of clinically significant PCa. For PI-RADS 3 lesions, active surveillance may be appropriate. No biopsy threshold met on density alone.' },
+        { label: 'Borderline — 0.10–0.15 ng/mL/cc', risk: 'Borderline', riskCol: 'cr-yellow',
+          desc: 'Intermediate range. Clinical decision should incorporate PI-RADS score, age, family history, and prior biopsy results. Shared decision-making recommended.' },
+        { label: 'Elevated — 0.15–0.20 ng/mL/cc', risk: 'Elevated', riskCol: 'cr-orange',
+          desc: 'Widely cited biopsy threshold. PSAD ≥0.15 supports biopsy recommendation at PI-RADS 3 and reinforces recommendation at PI-RADS 4–5.' },
+        { label: 'High — ≥0.20 ng/mL/cc', risk: 'High', riskCol: 'cr-red',
+          desc: 'Strongly supports biopsy. High PSAD in context of PI-RADS 4–5 lesion warrants urgent urology referral and targeted + systematic biopsy.' },
+      ]},
+      { title: 'Volume Formula', items: [
+        { label: 'Ellipsoid formula', risk: '', riskCol: 'cr-grey',
+          desc: 'Volume (mL) = Length (AP) × Width (Trans) × Height (SI) × 0.52. Widely validated on both MRI and transrectal ultrasound. Accuracy improves when dimensions are measured on orthogonal planes.' },
+        { label: 'PSA Density (PSAD)', risk: '', riskCol: 'cr-grey',
+          desc: 'PSAD = Total PSA (ng/mL) ÷ Prostate Volume (mL). Corrects for the contribution of benign prostatic enlargement to PSA. A larger gland produces more PSA per gram, so PSAD adjusts for this.' },
+      ]},
+    ],
   },
 
   // ════════════════════════════════════════════════════════ SPINE / MSK ════════
