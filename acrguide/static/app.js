@@ -9,8 +9,8 @@ const COLOURS = {
   blue:   { card: 'result-blue',   badge: 'badge-blue',   label: 'Imaging Recommended' },
 };
 
-function result(colour, recommendation, notes = [], extra = '') {
-  return { colour, recommendation, notes, extra };
+function result(colour, recommendation, notes = [], extra = '', copyString = '') {
+  return { colour, recommendation, notes, extra, copyString };
 }
 
 // ─── Field builders ───────────────────────────────────────────────────────────
@@ -28,6 +28,9 @@ function radioField(id, label, options, help = '') {
 }
 function pointsField(id, label, options, help = '') {
   return { type: 'points', id, label, options, help };
+}
+function sectionField(label) {
+  return { type: 'section', label };
 }
 
 // ─── Guidelines ──────────────────────────────────────────────────────────────
@@ -744,6 +747,11 @@ const GUIDELINES = {
         { value: 'neg', label: 'Negative (no early enhancement or diffuse enhancement)' },
         { value: 'pos', label: 'Positive (focal, earlier than or simultaneous with adjacent tissue)' },
       ]),
+      sectionField('PSA & Volume Calculator'),
+      numField('psa',     'Serum PSA',                   'ng/mL', 'e.g. 7.2'),
+      numField('prost_l', 'Prostate Length (AP)',         'cm',    'e.g. 4.8', 'Anteroposterior on axial image'),
+      numField('prost_w', 'Prostate Width (transverse)',  'cm',    'e.g. 4.2', 'Transverse on axial image'),
+      numField('prost_h', 'Prostate Height (SI)',         'cm',    'e.g. 3.8', 'Craniocaudal on sagittal/coronal'),
     ],
     compute(f) {
       const t2  = parseInt(f.t2)  || 1;
@@ -753,11 +761,9 @@ const GUIDELINES = {
 
       let pirads;
       if (pz) {
-        // PZ: dominated by DWI
         pirads = dwi;
         if (dwi === 3 && dce) pirads = 4;
       } else {
-        // TZ: dominated by T2
         pirads = t2;
         if (t2 === 3 && dwi === 5) pirads = 4;
       }
@@ -770,15 +776,85 @@ const GUIDELINES = {
         5: { col: 'red',    label: 'PI-RADS 5', mgmt: 'Clinically significant PCa highly likely. Targeted + systematic biopsy; urology referral.' },
       };
 
-      const c = info[pirads] || info[3];
+      const c    = info[pirads] || info[3];
+      const zone = pz ? 'peripheral zone' : 'transition zone';
       const notes = [
         'PI-RADS v2.1 applies to multiparametric MRI (T2WI + DWI + DCE).',
-        'PSAD (PSA density) = PSA / prostate volume. PSAD >0.15 ng/mL/cc increases risk.',
-        'Equivocal PI-RADS 3 lesions in the PZ with positive DCE should be upgraded.',
+        'PSAD >0.15 ng/mL/cc increases risk of clinically significant PCa; may prompt biopsy even at PI-RADS 3.',
+        'Equivocal PI-RADS 3 lesions in the PZ with positive DCE should be upgraded to PI-RADS 4.',
       ];
-      return result(c.col, `${c.label} — ${c.mgmt}`, notes,
-        `<div class="sub-result"><div class="sub-result-title">Score summary</div>
-        Zone: ${pz?'Peripheral':'Transition'} &nbsp;|&nbsp; T2: ${t2} &nbsp;|&nbsp; DWI: ${dwi} &nbsp;|&nbsp; DCE: ${dce?'Positive':'Negative'} &nbsp;|&nbsp; <strong>PI-RADS: ${pirads}</strong></div>`);
+
+      // ── PSA density calculation ──────────────────────────────────────────
+      const psa = parseFloat(f.psa);
+      const pl  = parseFloat(f.prost_l);
+      const pw  = parseFloat(f.prost_w);
+      const ph  = parseFloat(f.prost_h);
+
+      let volHtml = '';
+      let copyString = '';
+
+      const hasVol = !isNaN(pl) && !isNaN(pw) && !isNaN(ph) && pl > 0 && pw > 0 && ph > 0;
+      const hasPSA = !isNaN(psa) && psa > 0;
+
+      if (hasVol) {
+        const vol   = (pl * pw * ph * 0.52).toFixed(1);
+        const volRaw = pl * pw * ph * 0.52;
+
+        let psadRow = '';
+        let psadLine = '';
+        if (hasPSA) {
+          const psad    = psa / volRaw;
+          const psadStr = psad.toFixed(3);
+          const psadCol = psad >= 0.15 ? '#c0392b' : psad >= 0.10 ? '#e67e22' : '#27ae60';
+          const psadLabel = psad >= 0.15
+            ? 'Elevated (≥10.15) — increased risk of csPCa'
+            : psad >= 0.10
+            ? 'Borderline (0.10–0.15) — clinical correlation needed'
+            : 'Normal (<0.10)';
+
+          psadRow = `<tr><td><strong>PSA Density</strong></td>
+            <td><strong style="color:${psadCol}">${psadStr} ng/mL/cc</strong></td>
+            <td style="color:${psadCol};font-size:.78rem">${psadLabel}</td></tr>`;
+
+          psadLine = `PSA: ${psa} ng/mL. PSA density: ${psadStr} ng/mL/cc (${psadLabel}).`;
+        } else if (hasPSA === false && f.psa !== '') {
+          psadRow = '';
+        }
+
+        volHtml = `<div class="sub-result mt-2">
+          <div class="sub-result-title">PSA &amp; Volume</div>
+          <table style="width:100%;font-size:.82rem;border-collapse:collapse">
+            <tr>
+              <td style="padding:2px 8px 2px 0;width:38%"><strong>Prostate volume</strong></td>
+              <td style="padding:2px 8px 2px 0">${vol} mL</td>
+              <td style="font-size:.77rem;color:#5c7a96">${pl} &times; ${pw} &times; ${ph} cm (ellipsoid)</td>
+            </tr>
+            ${hasPSA ? `<tr><td style="padding:2px 8px 2px 0"><strong>PSA</strong></td><td>${psa} ng/mL</td><td></td></tr>` : ''}
+            ${psadRow}
+          </table>
+        </div>`;
+
+        // ── Generate report copy string ────────────────────────────────────
+        const dceLine  = dce ? 'positive' : 'negative';
+        const piLine   = `${c.label} lesion in the ${zone} (T2: ${t2}, DWI: ${dwi}, DCE: ${dceLine}).`;
+        const volLine  = `Prostate volume: ${vol} mL (${pl} × ${pw} × ${ph} cm, ellipsoid formula).`;
+        const mgmtLine = c.mgmt;
+
+        copyString = hasPSA
+          ? `Prostate mpMRI (PI-RADS v2.1): ${piLine} ${volLine} ${psadLine} ${mgmtLine}`
+          : `Prostate mpMRI (PI-RADS v2.1): ${piLine} ${volLine} ${mgmtLine}`;
+      } else {
+        // No volume — generate simpler copy string if PI-RADS scored
+        if (f.zone) {
+          const dceLine = dce ? 'positive' : 'negative';
+          copyString = `Prostate mpMRI (PI-RADS v2.1): ${c.label} lesion in the ${zone} (T2: ${t2}, DWI: ${dwi}, DCE: ${dceLine}). ${c.mgmt}`;
+        }
+      }
+
+      const scoreBox = `<div class="sub-result"><div class="sub-result-title">Score summary</div>
+        Zone: ${pz ? 'Peripheral' : 'Transition'} &nbsp;|&nbsp; T2: ${t2} &nbsp;|&nbsp; DWI: ${dwi} &nbsp;|&nbsp; DCE: ${dce ? 'Positive' : 'Negative'} &nbsp;|&nbsp; <strong>PI-RADS: ${pirads}</strong></div>`;
+
+      return result(c.col, `${c.label} — ${c.mgmt}`, notes, scoreBox + volHtml, copyString);
     },
   },
 
@@ -966,6 +1042,19 @@ function renderForm(glId) {
     }
     wrapper.appendChild(label);
 
+    if (field.type === 'section') {
+      var hr = document.createElement('hr');
+      hr.className = 'my-3';
+      wrapper.appendChild(hr);
+      var secLabel = document.createElement('p');
+      secLabel.className = 'text-muted mb-2';
+      secLabel.style.cssText = 'font-size:.74rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;';
+      secLabel.textContent = field.label;
+      wrapper.appendChild(secLabel);
+      form.appendChild(wrapper);
+      return;
+    }
+
     if (field.type === 'number') {
       const inp = document.createElement('input');
       inp.type = 'number';
@@ -1105,6 +1194,27 @@ function displayResult(res) {
   }
 
   document.getElementById('result-extra').innerHTML = res.extra || '';
+
+  var copyEl = document.getElementById('result-copy');
+  if (res.copyString) {
+    copyEl.innerHTML =
+      '<div class="copy-box mt-3">' +
+        '<div class="copy-box-label"><i class="bi bi-clipboard-fill me-1"></i>Report string' +
+          '<button class="copy-btn" id="copy-btn-trigger">Copy</button>' +
+        '</div>' +
+        '<div class="copy-box-text" id="copy-box-text">' + res.copyString + '</div>' +
+      '</div>';
+    document.getElementById('copy-btn-trigger').addEventListener('click', function() {
+      navigator.clipboard.writeText(res.copyString).then(function() {
+        var btn = document.getElementById('copy-btn-trigger');
+        btn.textContent = 'Copied!';
+        btn.classList.add('copied');
+        setTimeout(function() { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+      });
+    });
+  } else {
+    copyEl.innerHTML = '';
+  }
 
   panel.style.display = 'block';
   panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });

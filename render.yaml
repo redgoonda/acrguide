@@ -3,7 +3,7 @@ services:
     name: acrguide
     runtime: python
     buildCommand: pip install -e .
-    startCommand: acrguide
+    startCommand: python -m acrguide.main
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
