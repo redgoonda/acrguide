@@ -41,6 +41,7 @@ const GUIDELINES = {
   fleischner_solid: {
     name: 'Fleischner Society — Solid Pulmonary Nodule',
     source: 'Fleischner Society 2017',
+    link: 'https://pubs.rsna.org/doi/10.1148/radiol.2017161659',
     desc: 'Incidental solid nodule in patients ≥35 years without known malignancy',
     fields: [
       numField('size', 'Nodule Diameter', 'mm', 'e.g. 7'),
@@ -89,6 +90,7 @@ const GUIDELINES = {
   fleischner_subsolid: {
     name: 'Fleischner Society — Subsolid / Ground-Glass Nodule',
     source: 'Fleischner Society 2017',
+    link: 'https://pubs.rsna.org/doi/10.1148/radiol.2017161659',
     desc: 'Incidental subsolid (GGN or part-solid) pulmonary nodule, patients ≥35 years',
     fields: [
       radioField('type', 'Nodule Type', [
@@ -150,6 +152,7 @@ const GUIDELINES = {
   lungrads: {
     name: 'Lung-RADS 2022',
     source: 'ACR Lung-RADS v2022',
+    link: 'https://www.acr.org/Clinical-Resources/Reporting-and-Data-Systems/Lung-Rads',
     desc: 'Annual low-dose CT lung cancer screening — nodule assessment',
     fields: [
       radioField('type', 'Nodule Type', [
@@ -226,6 +229,7 @@ const GUIDELINES = {
   tirads: {
     name: 'ACR TI-RADS',
     source: 'ACR TI-RADS 2017',
+    link: 'https://pubs.rsna.org/doi/10.1148/radiol.2017171440',
     desc: 'Thyroid Imaging Reporting and Data System for ultrasound evaluation of thyroid nodules',
     fields: [
       numField('size', 'Nodule Size (largest dimension)', 'cm', 'e.g. 2.0'),
@@ -318,6 +322,7 @@ const GUIDELINES = {
   bosniak: {
     name: 'Bosniak Renal Cyst Classification 2019',
     source: 'Bosniak Classification v2019',
+    link: 'https://pubs.rsna.org/doi/10.1148/radiol.2019191299',
     desc: 'CT/MRI classification of cystic renal masses',
     fields: [
       selectField('class', 'Bosniak Class (select the best match)', [
@@ -352,6 +357,7 @@ const GUIDELINES = {
   renal_mass: {
     name: 'Renal Mass — ACR Incidental Findings White Paper',
     source: 'ACR Incidental Findings Committee 2017',
+    link: 'https://www.acr.org/Clinical-Resources/Reporting-and-Data-Systems',
     desc: 'Management of incidental solid or indeterminate renal masses found on CT/MRI',
     fields: [
       numField('size', 'Mass Size', 'cm', 'e.g. 3.5'),
@@ -407,6 +413,7 @@ const GUIDELINES = {
   lirads: {
     name: 'LI-RADS v2018',
     source: 'ACR LI-RADS v2018',
+    link: 'https://www.acr.org/Clinical-Resources/Reporting-and-Data-Systems/LI-RADS',
     desc: 'Liver Imaging Reporting and Data System for HCC risk — patients with cirrhosis or chronic HBV',
     fields: [
       numField('size', 'Observation Size', 'mm', 'e.g. 25'),
@@ -477,6 +484,7 @@ const GUIDELINES = {
   adrenal: {
     name: 'Adrenal Incidentaloma',
     source: 'ACR / Endocrine Society 2010 / 2016',
+    link: 'https://academic.oup.com/jcem/article/101/5/1889/2804729',
     desc: 'Management of incidentally discovered adrenal masses on CT or MRI, with automatic washout calculation',
     fields: [
       numField('size', 'Mass Size', 'cm', 'e.g. 3.2'),
@@ -620,6 +628,7 @@ const GUIDELINES = {
   pancreatic_cyst: {
     name: 'Pancreatic Cyst — ACR 2022',
     source: 'ACR Incidental Findings 2022 / IAP Fukuoka',
+    link: 'https://doi.org/10.1053/j.gastro.2015.01.031',
     desc: 'Management of incidental pancreatic cystic lesions on CT or MRI',
     fields: [
       numField('size', 'Cyst Size', 'cm', 'e.g. 2.0', 'Largest dimension'),
@@ -697,6 +706,7 @@ const GUIDELINES = {
   birads: {
     name: 'ACR BI-RADS',
     source: 'ACR BI-RADS 5th Edition',
+    link: 'https://www.acr.org/Clinical-Resources/Reporting-and-Data-Systems/Bi-Rads',
     desc: 'Breast Imaging Reporting and Data System — mammography, ultrasound, MRI',
     fields: [
       selectField('category', 'BI-RADS Assessment Category', [
@@ -748,6 +758,7 @@ const GUIDELINES = {
   orads: {
     name: 'ACR O-RADS',
     source: 'ACR O-RADS US v2022',
+    link: 'https://pubs.rsna.org/doi/10.1148/radiol.2020191459',
     desc: 'Ovarian-Adnexal Reporting and Data System — ultrasound',
     fields: [
       radioField('patient', 'Patient Status', [
@@ -788,6 +799,7 @@ const GUIDELINES = {
   pirads: {
     name: 'PI-RADS v2.1',
     source: 'ACR/ESUR PI-RADS v2.1 2019',
+    link: 'https://www.acr.org/Clinical-Resources/Reporting-and-Data-Systems/PI-RADS',
     desc: 'Prostate Imaging-Reporting and Data System — multiparametric MRI (mpMRI)',
     fields: [
       radioField('zone', 'Lesion Location', [
@@ -860,6 +872,7 @@ const GUIDELINES = {
   psa_density: {
     name: 'PSA Density Calculator',
     source: 'EAU / AUA Guidelines',
+    link: 'https://uroweb.org/guidelines/prostate-cancer',
     desc: 'Prostate volume (ellipsoid formula) and PSA density with auto-generated report string',
     fields: [
       numField('prost_l', 'Prostate Length (AP)',        'cm',    'e.g. 4.8', 'Anteroposterior on axial MRI/US'),
@@ -958,6 +971,7 @@ const GUIDELINES = {
   incidental_vertebral: {
     name: 'Incidental Vertebral Compression Fracture',
     source: 'ACR Appropriateness Criteria / NOF Guidelines',
+    link: 'https://www.acr.org/Clinical-Resources/ACR-Appropriateness-Criteria',
     desc: 'Workup of incidentally discovered vertebral compression or height loss on CT or MRI',
     fields: [
       numField('height_loss', 'Estimated Height Loss', '%', 'e.g. 20', 'Grade: mild <20%, moderate 20–40%, severe >40%'),
@@ -1003,6 +1017,7 @@ const GUIDELINES = {
   incidental_disc: {
     name: 'Incidental Disc and Degenerative Finding',
     source: 'ACR Appropriateness Criteria / NASS Guidelines',
+    link: 'https://www.acr.org/Clinical-Resources/ACR-Appropriateness-Criteria',
     desc: 'Common incidental lumbar/cervical spine findings — contextualising significance',
     fields: [
       selectField('finding', 'Primary Finding', [
@@ -1067,6 +1082,7 @@ const GUIDELINES = {
   aortic_aneurysm: {
     name: 'Aortic Aneurysm — Surveillance & Management',
     source: 'SVS 2018 / ACC-AHA 2022',
+    link: 'https://doi.org/10.1016/j.jvs.2018.07.081',
     desc: 'Size-based follow-up for incidental aortic aneurysm (abdominal and thoracic)',
     fields: [
       radioField('location', 'Aneurysm Location', [
@@ -1145,6 +1161,7 @@ const GUIDELINES = {
   carotid_stenosis: {
     name: 'Carotid Artery Stenosis — NASCET Grading & Management',
     source: 'AHA/ASA 2021 / NASCET Criteria',
+    link: 'https://doi.org/10.1161/STR.0000000000000375',
     desc: 'ICA stenosis grading and management based on symptom status',
     fields: [
       selectField('stenosis', 'Degree of Stenosis (NASCET)', [
@@ -1202,6 +1219,7 @@ const GUIDELINES = {
   cac_scoring: {
     name: 'Coronary Artery Calcium (CAC) Score',
     source: 'ACC/AHA 2018 Cholesterol Guidelines',
+    link: 'https://doi.org/10.1161/CIR.0000000000000625',
     desc: 'Agatston score interpretation for ASCVD risk stratification and statin therapy',
     fields: [
       numField('score', 'Agatston CAC Score', '', 'e.g. 125', 'Enter 0 if no calcification detected'),
@@ -1256,6 +1274,7 @@ const GUIDELINES = {
   pituitary_incidentaloma: {
     name: 'Incidental Pituitary Adenoma',
     source: 'Endocrine Society 2011 / Pituitary Society 2023',
+    link: 'https://doi.org/10.1210/jc.2010-1048',
     desc: 'Management of incidentally discovered pituitary lesion on head CT or MRI',
     fields: [
       numField('size', 'Maximum Lesion Diameter', 'mm', 'e.g. 8', '<10 mm = microadenoma; \u226510 mm = macroadenoma'),
@@ -1311,6 +1330,7 @@ const GUIDELINES = {
   intracranial_aneurysm: {
     name: 'Unruptured Intracranial Aneurysm — Risk Stratification',
     source: 'AHA/ASA 2015 / ISUIA',
+    link: 'https://doi.org/10.1161/STR.0000000000000070',
     desc: 'Management of incidentally discovered unruptured intracranial aneurysm',
     fields: [
       numField('size', 'Maximum Aneurysm Diameter', 'mm', 'e.g. 6', 'Largest dimension on CTA or MRA'),
@@ -1379,6 +1399,7 @@ const GUIDELINES = {
   fazekas: {
     name: 'White Matter Hyperintensities — Fazekas Scale',
     source: 'Fazekas et al. 1987 / STRIVE 2013',
+    link: 'https://doi.org/10.1148/radiology.158.3.3946941',
     desc: 'Grading of T2/FLAIR white matter hyperintensities as a marker of cerebral small vessel disease',
     fields: [
       selectField('pvwmh', 'Periventricular WMH', [
@@ -1444,6 +1465,7 @@ const GUIDELINES = {
   gallbladder_polyp: {
     name: 'Gallbladder Polyp — Surveillance & Management',
     source: 'ESGAR/EAHPBA 2017 / ACR 2022',
+    link: 'https://doi.org/10.1007/s00464-021-08695-x',
     desc: 'Follow-up and surgical recommendation for incidentally discovered gallbladder polyp',
     fields: [
       numField('size', 'Largest Polyp Diameter', 'mm', 'e.g. 8', 'Measure largest polyp on ultrasound'),
@@ -1506,6 +1528,7 @@ const GUIDELINES = {
   crads: {
     name: 'C-RADS — CT Colonography Reporting',
     source: 'ACR C-RADS 2005 / 2021 Update',
+    link: 'https://pubs.rsna.org/doi/10.1148/radiol.2362041295',
     desc: 'Colonic and extracolonic reporting categories for CT colonography findings',
     fields: [
       sectionField('Colonic Findings'),
@@ -1573,6 +1596,7 @@ const GUIDELINES = {
   bone_lesion: {
     name: 'Bone Lesion — Lodwick Characterisation',
     source: 'Lodwick Classification / ACR Appropriateness Criteria',
+    link: 'https://www.acr.org/Clinical-Resources/ACR-Appropriateness-Criteria',
     desc: 'Imaging characterisation of incidental or symptomatic bone lesion on X-ray or CT',
     fields: [
       selectField('pattern', 'Osteolysis Pattern (Zone of Transition)', [
@@ -1664,6 +1688,7 @@ const GUIDELINES = {
   meniscal_tear: {
     name: 'Meniscal Tear — MRI Stoller Grading',
     source: 'Stoller 1987 / ISAKOS Classification',
+    link: 'https://doi.org/10.1148/radiology.163.3.3575722',
     desc: 'MRI grading of meniscal signal and tear classification with management guidance',
     fields: [
       selectField('grade', 'Stoller MRI Grade', [
@@ -1744,6 +1769,7 @@ const GUIDELINES = {
   rotator_cuff: {
     name: 'Rotator Cuff Tear — MRI Grading',
     source: 'Balich 1997 / AOSSM / AAOS Guidelines',
+    link: 'https://www.orthobullets.com/shoulder-and-elbow/3055/rotator-cuff-tears',
     desc: 'MRI-based grading of rotator cuff pathology and management guidance',
     fields: [
       radioField('thickness', 'Tear Type', [
@@ -1849,6 +1875,7 @@ const GUIDELINES = {
   hydronephrosis: {
     name: 'Hydronephrosis — SFU Grading & Management',
     source: 'SFU Grading System / EAU Guidelines',
+    link: 'https://www.auanet.org/guidelines-and-quality/guidelines',
     desc: 'Grading of renal pelvicalyceal dilation and management guidance',
     fields: [
       selectField('grade', 'SFU Hydronephrosis Grade', [
@@ -1919,6 +1946,7 @@ const GUIDELINES = {
   urinary_stone: {
     name: 'Urinary Stone — Size & Location Management (AUA 2016)',
     source: 'AUA Stone Guidelines 2016 / EAU 2023',
+    link: 'https://www.auanet.org/guidelines-and-quality/guidelines/kidney-stones-guideline',
     desc: 'Non-contrast CT-based stone management recommendations',
     fields: [
       numField('size', 'Maximum Stone Diameter', 'mm', 'e.g. 6', 'Longest axis on non-contrast CT'),
@@ -2007,6 +2035,7 @@ const GUIDELINES = {
   liver_lesion_noncirrhotic: {
     name: 'Incidental Liver Lesion — Non-Cirrhotic Patient',
     source: 'ACR 2017 Incidental Findings / EASL 2018',
+    link: 'https://www.acr.org/Clinical-Resources/Reporting-and-Data-Systems',
     desc: 'Characterisation and follow-up of incidental hepatic lesion in a patient without cirrhosis or known malignancy',
     fields: [
       numField('size', 'Lesion Size', 'mm', 'e.g. 25'),
@@ -2084,6 +2113,7 @@ const GUIDELINES = {
   hepatic_steatosis: {
     name: 'Hepatic Steatosis — CT-based Grading',
     source: 'ACR / AASLD / EASL Guidelines',
+    link: 'https://doi.org/10.1002/hep.30372',
     desc: 'Unenhanced CT assessment of hepatic steatosis using liver attenuation values',
     fields: [
       numField('liver_hu', 'Liver Attenuation', 'HU', 'e.g. 38', 'Measure ROI in right lobe, away from vessels, on unenhanced CT'),
@@ -2171,6 +2201,7 @@ const GUIDELINES = {
   cbd_dilation: {
     name: 'Bile Duct Dilation — Significance & Workup',
     source: 'ACR / BSG / EASL Guidelines',
+    link: 'https://www.bsg.org.uk/clinical-resource/guidelines-on-the-investigation-of-common-bile-duct-stones/',
     desc: 'Assessment of common bile duct and intrahepatic duct dilation',
     fields: [
       numField('cbd', 'Common Bile Duct Diameter', 'mm', 'e.g. 9', 'Measured on US, CT or MRI at widest point'),
@@ -2268,6 +2299,7 @@ const GUIDELINES = {
   aspects: {
     name: 'ASPECTS — Alberta Stroke Programme Early CT Score',
     source: 'Barber et al. 2000 / DAWN / DEFUSE-3 Criteria',
+    link: 'https://doi.org/10.1016/S0140-6736(00)02482-6',
     desc: '10-point CT score for early ischaemic change in MCA territory — guides thrombolysis and thrombectomy eligibility',
     fields: [
       sectionField('MCA Territory Regions — select ALL regions with early ischaemic change (hypoattenuation, sulcal effacement, loss of grey-white differentiation)'),
@@ -2341,6 +2373,7 @@ const GUIDELINES = {
   ich_score: {
     name: 'ICH Score — Intracerebral Haemorrhage Severity',
     source: 'Hemphill et al. 2001 / AHA/ASA 2022',
+    link: 'https://doi.org/10.1161/01.str.32.4.891',
     desc: '30-day mortality prediction for spontaneous intracerebral haemorrhage',
     fields: [
       selectField('gcs', 'GCS Score at Presentation', [
@@ -2438,6 +2471,9 @@ function renderCriteria(gl) {
 
   var html = '<div class="criteria-card">';
   html += '<div class="criteria-hdr"><i class="bi bi-book me-1"></i> Reference Criteria</div>';
+  if (gl.link) {
+    html += '<a href="' + gl.link + '" target="_blank" rel="noopener noreferrer" class="criteria-source-link"><i class="bi bi-box-arrow-up-right me-1"></i>View source / guideline</a>';
+  }
 
   gl.criteria.forEach(function(section) {
     html += '<div class="crit-section">';
