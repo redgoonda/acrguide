@@ -997,6 +997,513 @@ const GUIDELINES = {
     },
   },
 
+  // ════════════════════════════════════════════════════════ VASCULAR ════════════
+
+  aortic_aneurysm: {
+    name: 'Aortic Aneurysm — Surveillance & Management',
+    source: 'SVS 2018 / ACC-AHA 2022',
+    desc: 'Size-based follow-up for incidental aortic aneurysm (abdominal and thoracic)',
+    fields: [
+      radioField('location', 'Aneurysm Location', [
+        { value: 'aaa',        label: 'Abdominal Aortic Aneurysm (AAA)' },
+        { value: 'ascending',  label: 'Thoracic — Ascending Aorta' },
+        { value: 'descending', label: 'Thoracic — Descending Aorta / Arch' },
+      ]),
+      numField('diameter', 'Maximum Diameter', 'cm', 'e.g. 4.5', 'Outer-to-outer on axial image'),
+      radioField('sex', 'Patient Sex', [
+        { value: 'male',   label: 'Male' },
+        { value: 'female', label: 'Female (lower surgical thresholds apply)' },
+      ]),
+      radioField('symptomatic', 'Symptomatic?', [
+        { value: 'no',  label: 'Asymptomatic (incidental)' },
+        { value: 'yes', label: 'Symptomatic — pain, tenderness, haemodynamic instability' },
+      ]),
+      radioField('ctd', 'Bicuspid Aortic Valve or Connective Tissue Disorder?', [
+        { value: 'no',  label: 'No' },
+        { value: 'yes', label: 'Yes — Marfan, Loeys-Dietz, bicuspid AV' },
+      ]),
+    ],
+    compute(f) {
+      const d = parseFloat(f.diameter);
+      if (isNaN(d) || d <= 0) return null;
+      const female = f.sex === 'female';
+      const symp   = f.symptomatic === 'yes';
+      const ctd    = f.ctd === 'yes';
+      if (symp) return result('red',
+        'Symptomatic aneurysm — emergency vascular surgery referral. Urgent CTA if not already performed.',
+        ['Symptomatic AAA/TAA carries very high rupture risk regardless of size.',
+         'Haemodynamically unstable patients require immediate surgical intervention.']);
+      const notes = [
+        'Growth rate >5 mm over 6 months warrants expedited surgical referral.',
+        'CTA is preferred over ultrasound for thoracic aneurysms.',
+        'All patients should receive cardiovascular risk factor optimisation (statin, BP control, smoking cessation).',
+      ];
+      if (f.location === 'aaa') {
+        const surg = female ? 5.0 : 5.5;
+        if (d < 3.0) return result('green', 'Normal aortic diameter — no surveillance required.', notes);
+        if (d < 4.0) return result('green', 'Small AAA — ultrasound surveillance every 2–3 years.', notes);
+        if (d < 4.5) return result('yellow', 'AAA 4.0–4.4 cm — ultrasound every 12 months.', notes);
+        if (d < surg) return result('yellow', 'AAA ' + d + ' cm — ultrasound every 6 months. Consider CT for morphology.', notes);
+        return result('red', 'AAA \u2265' + surg + ' cm — vascular surgery referral for repair (EVAR or open). Threshold lower in females (\u22655.0 cm).', notes);
+      }
+      if (f.location === 'ascending') {
+        const surg = ctd ? 4.5 : 5.5;
+        const warn = ctd ? 4.0 : 5.0;
+        if (d < 4.0) return result('yellow', 'Ascending aorta dilation — CTA or MRA at 12 months. Cardiothoracic referral.', notes);
+        if (d < warn) return result('yellow', 'Ascending aorta ' + d + ' cm — imaging every 6–12 months.', notes);
+        if (d < surg) return result('orange', 'Ascending aorta ' + d + ' cm — expedited cardiothoracic surgery referral.', notes);
+        return result('red', 'Ascending aorta \u2265' + surg + ' cm — surgical repair indicated' + (ctd ? ' (lower threshold: CTD/bicuspid AV).' : '.'), notes);
+      }
+      const surg = ctd ? 5.5 : 6.0;
+      if (d < 4.5) return result('yellow', 'Descending aortic dilation — CTA at 12 months.', notes);
+      if (d < surg) return result('orange', 'Descending aorta ' + d + ' cm — vascular/cardiothoracic referral. Imaging every 6 months.', notes);
+      return result('red', 'Descending aorta \u2265' + surg + ' cm — TEVAR or surgical repair indicated.', notes);
+    },
+    criteria: [
+      { title: 'AAA — Surveillance (SVS 2018)', items: [
+        { label: '<3.0 cm', risk: 'Normal', riskCol: 'cr-green', desc: 'Normal infrarenal aorta. No surveillance needed.' },
+        { label: '3.0–3.9 cm', risk: 'Small', riskCol: 'cr-green', desc: 'Very low rupture risk (<0.5%/yr). US every 2–3 years.' },
+        { label: '4.0–4.4 cm', risk: 'Moderate', riskCol: 'cr-yellow', desc: 'Annual ultrasound. Rupture risk ~1%/yr.' },
+        { label: '4.5–5.4 cm', risk: 'Elevated', riskCol: 'cr-orange', desc: 'US every 6 months. Rupture risk 1–3%/yr. CT for morphology.' },
+        { label: '\u22655.5 cm (M) / \u22655.0 cm (F)', risk: 'Repair', riskCol: 'cr-red', desc: 'Elective repair recommended. EVAR preferred if anatomy suitable. Annual rupture risk ~5–10%.' },
+      ]},
+      { title: 'Thoracic Aorta (ACC/AHA 2022)', items: [
+        { label: 'Ascending <4.5 cm', risk: 'Surveillance', riskCol: 'cr-yellow', desc: 'Annual CTA or MRA.' },
+        { label: 'Ascending 4.5–5.5 cm', risk: 'Referral', riskCol: 'cr-orange', desc: 'Cardiothoracic referral. Lower threshold (\u22655.0 cm or 4.5 cm) if CTD or bicuspid AV.' },
+        { label: 'Ascending \u22655.5 cm', risk: 'Surgery', riskCol: 'cr-red', desc: 'Surgery indicated. Threshold \u22654.5 cm for CTD/bicuspid AV patients.' },
+        { label: 'Descending \u22656.0 cm', risk: 'Repair', riskCol: 'cr-red', desc: 'TEVAR or surgery. \u22655.5 cm if CTD.' },
+      ]},
+    ],
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  carotid_stenosis: {
+    name: 'Carotid Artery Stenosis — NASCET Grading & Management',
+    source: 'AHA/ASA 2021 / NASCET Criteria',
+    desc: 'ICA stenosis grading and management based on symptom status',
+    fields: [
+      selectField('stenosis', 'Degree of Stenosis (NASCET)', [
+        { value: '0',   label: '<30% — minimal' },
+        { value: '30',  label: '30–49% — mild' },
+        { value: '50',  label: '50–69% — moderate' },
+        { value: '70',  label: '70–99% — severe' },
+        { value: '100', label: '100% — total occlusion' },
+      ], 'NASCET: (1 \u2212 [ICA min lumen / distal ICA diameter]) \xd7 100'),
+      radioField('symptoms', 'Symptomatic? (ipsilateral TIA or stroke \u22646 months)', [
+        { value: 'asymptomatic', label: 'Asymptomatic' },
+        { value: 'symptomatic',  label: 'Symptomatic' },
+      ]),
+      radioField('sex', 'Patient Sex', [
+        { value: 'male',   label: 'Male' },
+        { value: 'female', label: 'Female' },
+      ]),
+    ],
+    compute(f) {
+      const sten = parseInt(f.stenosis);
+      const symp = f.symptoms === 'symptomatic';
+      const male = f.sex === 'male';
+      const notes = [
+        'Optimal medical therapy: antiplatelet, statin, BP control — for all patients.',
+        'NASCET measures residual lumen vs distal ICA above the bulb (not estimated original diameter).',
+        'CAS (carotid artery stenting) is an alternative in high surgical-risk patients.',
+        'CEA confers maximal benefit when performed within 2 weeks of symptoms in eligible patients.',
+      ];
+      if (sten === 100) return result('orange', 'Total occlusion — CEA/CAS not possible. Optimal medical therapy. Neurology referral.', notes);
+      if (!symp) {
+        if (sten < 50) return result('green',  'Asymptomatic stenosis <50% — optimal medical therapy only. No intervention.', notes);
+        if (sten < 70) return result('yellow', 'Asymptomatic stenosis 50–69% — medical therapy. CEA benefit marginal; vascular surgery referral for shared decision-making.', notes);
+        return result('orange', 'Asymptomatic stenosis 70–99% — CEA may be considered if surgical risk <3% and life expectancy >5 years. ' + (male ? 'Males benefit more.' : 'Benefit less clear in females.') + ' Vascular surgery referral.', notes);
+      }
+      if (sten < 50) return result('yellow', 'Symptomatic stenosis <50% — no CEA benefit. Intensive medical therapy (dual antiplatelet acutely, statin, BP control).', notes);
+      if (sten < 70) return result('orange', 'Symptomatic stenosis 50–69% — CEA reduces 5-year stroke risk by ~4%. Vascular surgery referral. Medical therapy concurrently.', notes);
+      return result('red', 'Symptomatic stenosis 70–99% — CEA strongly recommended within 2 weeks of symptoms. Reduces 5-year ipsilateral stroke risk by ~16%. Urgent vascular surgery referral.', notes);
+    },
+    criteria: [
+      { title: 'NASCET Stenosis Severity', items: [
+        { label: '<30% — Minimal', risk: 'Low', riskCol: 'cr-green', desc: 'Minimal disease. Medical management only. No interventional benefit demonstrated.' },
+        { label: '30–49% — Mild', risk: 'Low-Mod', riskCol: 'cr-green', desc: 'No CEA benefit. Optimal medical therapy: antiplatelet, statin, hypertension control.' },
+        { label: '50–69% — Moderate', risk: 'Moderate', riskCol: 'cr-yellow', desc: 'Symptomatic: marginal CEA benefit (NNT ~28 at 5yr). Asymptomatic: no clear benefit from CEA.' },
+        { label: '70–99% — Severe', risk: 'High', riskCol: 'cr-red', desc: 'Symptomatic: CEA strongly recommended (NNT ~6 at 5yr). Asymptomatic: CEA beneficial if surgical risk <3%.' },
+        { label: '100% — Occlusion', risk: 'None', riskCol: 'cr-grey', desc: 'Not amenable to revascularisation. Medical management only. Evaluate contralateral carotid.' },
+      ]},
+      { title: 'NASCET Measurement Method', items: [
+        { label: 'NASCET formula', risk: '', riskCol: 'cr-grey', desc: 'Stenosis% = (1 \u2212 [minimum ICA lumen / distal normal ICA]) \xd7 100. Distal ICA measured above bulb where walls are parallel.' },
+        { label: 'ECST vs NASCET', risk: '', riskCol: 'cr-grey', desc: 'ECST measures against estimated original vessel diameter. NASCET is the internationally adopted standard for clinical trials and guidelines.' },
+      ]},
+    ],
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  cac_scoring: {
+    name: 'Coronary Artery Calcium (CAC) Score',
+    source: 'ACC/AHA 2018 Cholesterol Guidelines',
+    desc: 'Agatston score interpretation for ASCVD risk stratification and statin therapy',
+    fields: [
+      numField('score', 'Agatston CAC Score', '', 'e.g. 125', 'Enter 0 if no calcification detected'),
+      numField('age',   'Patient Age', 'years', 'e.g. 58'),
+      selectField('risk', '10-Year ASCVD Risk (Pooled Cohort Equations)', [
+        { value: 'low',          label: '<5% — Low risk' },
+        { value: 'borderline',   label: '5–7.5% — Borderline risk' },
+        { value: 'intermediate', label: '7.5–20% — Intermediate risk' },
+        { value: 'high',         label: '\u226520% — High risk' },
+      ]),
+    ],
+    compute(f) {
+      const score = parseFloat(f.score);
+      if (isNaN(score) || score < 0) return null;
+      const notes = [
+        'CAC scanning uses non-contrast ECG-gated CT; effective dose ~1 mSv.',
+        'CAC 0 at any age confers very low 10-year ASCVD risk — may defer statin in borderline-risk patients.',
+        'CAC >400 indicates extensive coronary calcification; risk equivalent to known ASCVD.',
+        'Repeat CAC scanning is generally not recommended — baseline score guides long-term therapy.',
+      ];
+      let colour, rec;
+      if (score === 0) {
+        colour = 'green';
+        rec = 'CAC 0 — very low 10-year ASCVD event rate. Consider withholding or deferring statin in borderline or intermediate risk. Reassurance appropriate.';
+      } else if (score < 100) {
+        colour = 'yellow';
+        rec = 'CAC 1–99 (score: ' + score + ') — intermediate risk modifier. Statin initiation favoured in borderline/intermediate ASCVD risk patients.';
+      } else if (score < 300) {
+        colour = 'orange';
+        rec = 'CAC 100–299 (score: ' + score + ') — significant coronary calcification. Statin therapy recommended; consider high-intensity. Cardiology referral.';
+      } else {
+        colour = 'red';
+        rec = 'CAC \u2265300 (score: ' + score + ') — extensive calcification. 10-year ASCVD risk >20%. High-intensity statin strongly indicated. Cardiology referral.';
+      }
+      return result(colour, rec, notes);
+    },
+    criteria: [
+      { title: 'Agatston Score Interpretation', items: [
+        { label: 'CAC 0', risk: 'Very Low', riskCol: 'cr-green', desc: 'No coronary calcification. 10-year event rate <2%. Supports withholding statin in borderline-risk patients.' },
+        { label: 'CAC 1–99', risk: 'Mild', riskCol: 'cr-yellow', desc: 'Mild calcification. Risk-enhancing factor; favours statin initiation in borderline to intermediate ASCVD risk.' },
+        { label: 'CAC 100–299', risk: 'Moderate', riskCol: 'cr-orange', desc: 'Moderate calcification. Independent predictor of MACE. Statin therapy recommended. 2-fold increase in 10-year risk vs zero-calcium.' },
+        { label: 'CAC \u2265300', risk: 'High', riskCol: 'cr-red', desc: 'Extensive calcification. Risk equivalent to known ASCVD. High-intensity statin + cardiology referral. CAC >400 ~25% 10-year MACE rate.' },
+      ]},
+      { title: 'Age/Sex Percentile Context', items: [
+        { label: 'MESA percentile calculator', risk: '', riskCol: 'cr-grey', desc: 'A score at the \u226575th percentile for age/sex/race confers higher-than-expected risk, even with a low absolute score (e.g. CAC 10 in a 45-year-old male).' },
+      ]},
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════ NEURO / HEAD ════════
+
+  pituitary_incidentaloma: {
+    name: 'Incidental Pituitary Adenoma',
+    source: 'Endocrine Society 2011 / Pituitary Society 2023',
+    desc: 'Management of incidentally discovered pituitary lesion on head CT or MRI',
+    fields: [
+      numField('size', 'Maximum Lesion Diameter', 'mm', 'e.g. 8', '<10 mm = microadenoma; \u226510 mm = macroadenoma'),
+      radioField('visual', 'Visual Symptoms or Field Defect?', [
+        { value: 'no',  label: 'No' },
+        { value: 'yes', label: 'Yes — visual field loss or diplopia' },
+      ]),
+      radioField('hormone', 'Hormone Excess Symptoms?', [
+        { value: 'no',  label: 'No (likely non-functioning)' },
+        { value: 'yes', label: "Yes — Cushing's features, acromegaly, galactorrhoea, amenorrhoea" },
+      ]),
+      radioField('cavernous', 'Cavernous Sinus Invasion on Imaging?', [
+        { value: 'no',       label: 'No' },
+        { value: 'possible', label: 'Possible / indeterminate' },
+        { value: 'yes',      label: 'Definite cavernous sinus invasion' },
+      ]),
+    ],
+    compute(f) {
+      const sz = parseFloat(f.size);
+      if (isNaN(sz) || sz <= 0) return null;
+      const macro   = sz >= 10;
+      const visual  = f.visual === 'yes';
+      const hormone = f.hormone === 'yes';
+      const notes = [
+        'All incidentally found pituitary adenomas require endocrinology referral.',
+        'Baseline hormonal workup: prolactin, IGF-1, ACTH/cortisol, LH/FSH, sex steroids, TSH/fT4.',
+        'Dedicated pituitary protocol MRI (3T, thin slices, dynamic contrast) if not already performed.',
+        'Pituitary apoplexy (sudden headache, visual loss, altered consciousness) — emergency neurosurgery.',
+      ];
+      if (visual) return result('red', 'Visual symptoms or field defect — urgent ophthalmology + neurosurgery referral. Likely chiasmal compression.', notes);
+      if (hormone) return result('orange',
+        (macro ? 'Macroadenoma' : 'Microadenoma') + ' with hormonal excess — endocrinology referral. Functional adenoma requires specific treatment (dopamine agonist for prolactinoma; surgery for Cushing\'s/acromegaly).', notes);
+      if (macro) return result('orange',
+        'Macroadenoma (' + sz + ' mm) — dedicated pituitary MRI, full hormone panel, formal visual fields. Neurosurgery referral.' + (f.cavernous === 'yes' ? ' Cavernous sinus invasion suggests aggressive behaviour.' : '') + ' MRI at 6 months, then annually.', notes);
+      if (sz < 5) return result('yellow', 'Microincidentaloma (' + sz + ' mm) — low growth risk. MRI at 1 year; if stable, repeat at 3 years, then discharge if no change.', notes);
+      return result('yellow', 'Microadenoma (' + sz + ' mm) — non-functioning. MRI at 6–12 months. Endocrinology review. If stable \xd72 years, extend to 2-yearly, then discharge.', notes);
+    },
+    criteria: [
+      { title: 'Size Classification', items: [
+        { label: 'Microadenoma — <10 mm', risk: 'Low', riskCol: 'cr-green', desc: 'Low risk of growth (<10%). Annual MRI initially. Very low risk of chiasmal compression. Hormonal workup at baseline.' },
+        { label: 'Macroadenoma — \u226510 mm', risk: 'Moderate', riskCol: 'cr-orange', desc: 'Higher risk of growth, visual symptoms, hypopituitarism. Neurosurgery involvement. Visual fields mandatory. Full hormone panel required.' },
+      ]},
+      { title: 'Hormonal Subtypes', items: [
+        { label: 'Prolactinoma', risk: 'Functional', riskCol: 'cr-yellow', desc: 'Most common functioning adenoma. Serum prolactin >200 ng/mL highly specific. First-line: cabergoline or bromocriptine. Surgery reserved for drug-resistant cases.' },
+        { label: "Cushing's — ACTH-secreting", risk: 'Functional', riskCol: 'cr-orange', desc: '24h urinary cortisol, midnight salivary cortisol. Petrosal sinus sampling may localise. Transsphenoidal surgery first-line.' },
+        { label: 'Acromegaly — GH-secreting', risk: 'Functional', riskCol: 'cr-orange', desc: 'IGF-1 elevation; OGTT fails to suppress GH. Transsphenoidal surgery \xb1 somatostatin analogue. Cardiac and sleep apnoea screening required.' },
+        { label: 'Non-functioning', risk: 'Incidental', riskCol: 'cr-grey', desc: 'Most incidentalomas. No hormone excess. Risk of hypopituitarism from mass effect. Follow-up imaging and baseline pituitary panel.' },
+      ]},
+    ],
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  intracranial_aneurysm: {
+    name: 'Unruptured Intracranial Aneurysm — Risk Stratification',
+    source: 'AHA/ASA 2015 / ISUIA',
+    desc: 'Management of incidentally discovered unruptured intracranial aneurysm',
+    fields: [
+      numField('size', 'Maximum Aneurysm Diameter', 'mm', 'e.g. 6', 'Largest dimension on CTA or MRA'),
+      selectField('location', 'Aneurysm Location', [
+        { value: 'anterior',  label: 'Anterior circulation (ICA, MCA, ACA)' },
+        { value: 'pcom',      label: 'Posterior communicating artery (PCOM)' },
+        { value: 'posterior', label: 'Posterior circulation (basilar, posterior fossa, PICA)' },
+      ]),
+      radioField('symptoms', 'Symptomatic?', [
+        { value: 'no',  label: 'Incidental / asymptomatic' },
+        { value: 'yes', label: 'Symptomatic — headache, 3rd nerve palsy, visual change' },
+      ]),
+      radioField('prior_sah', 'Prior SAH from a different aneurysm?', [
+        { value: 'no',  label: 'No' },
+        { value: 'yes', label: 'Yes' },
+      ]),
+      radioField('morphology', 'Aneurysm Morphology', [
+        { value: 'regular',   label: 'Regular / smooth dome' },
+        { value: 'irregular', label: 'Irregular / lobulated / bleb present' },
+      ]),
+    ],
+    compute(f) {
+      const sz = parseFloat(f.size);
+      if (isNaN(sz) || sz <= 0) return null;
+      const post     = f.location === 'posterior';
+      const symp     = f.symptoms === 'yes';
+      const priorSAH = f.prior_sah === 'yes';
+      const irreg    = f.morphology === 'irregular';
+      const notes = [
+        'All unruptured intracranial aneurysms require neurovascular specialist review.',
+        'PHASES score integrates: Population, Hypertension, Age, Size, Earlier SAH, Site.',
+        'Irregular morphology (bleb, daughter sac) is an independent risk factor for rupture.',
+        'Smoking cessation and BP control reduce rupture risk.',
+        'CTA or DSA with 3D reconstruction recommended for treatment planning.',
+      ];
+      if (symp) return result('red', 'Symptomatic aneurysm — urgent neurovascular referral. High rupture risk (e.g. 3rd nerve palsy from PCOM aneurysm).', notes);
+      const highRiskFeatures = [irreg ? 'irregular morphology' : '', priorSAH ? 'prior SAH' : '', post ? 'posterior circulation' : ''].filter(Boolean);
+      if (sz < 5 && !post && !irreg && !priorSAH) {
+        return result('yellow', 'Small anterior aneurysm (' + sz + ' mm) — low rupture risk. MRA/CTA at 6–12 months, then annually \xd73 years if stable. Neurovascular referral.', notes);
+      }
+      if (sz < 7 && highRiskFeatures.length === 0) {
+        return result('orange', sz + ' mm aneurysm — intermediate risk. Neurovascular MDT review. ' + (post ? 'Posterior circulation — higher risk for same size. ' : '') + 'Consider treatment vs surveillance.', notes);
+      }
+      if (sz < 7) {
+        return result('orange', sz + ' mm aneurysm with high-risk features (' + highRiskFeatures.join(', ') + ') — neurovascular MDT review; treatment likely recommended.', notes);
+      }
+      return result('red', 'Large aneurysm (' + sz + ' mm) — elevated rupture risk. Neurovascular surgery referral. ' + (post ? 'Posterior circulation — higher risk. ' : '') + (irreg ? 'Irregular morphology further increases risk.' : ''), notes);
+    },
+    criteria: [
+      { title: 'Size & Rupture Risk (ISUIA)', items: [
+        { label: '<5 mm — Anterior circulation', risk: 'Low', riskCol: 'cr-green', desc: '5-year rupture risk ~0.5%. Surveillance imaging recommended. Annual MRA typically adequate.' },
+        { label: '5–9.9 mm', risk: 'Intermediate', riskCol: 'cr-yellow', desc: '5-year rupture risk 1–3%. PHASES score guides treatment vs surveillance. Neurovascular team decision.' },
+        { label: '10–24 mm', risk: 'High', riskCol: 'cr-orange', desc: '5-year rupture risk 3–6%. Treatment (clipping or coiling) generally recommended in suitable patients.' },
+        { label: '\u226525 mm — Giant', risk: 'Very High', riskCol: 'cr-red', desc: 'Annual rupture rate ~6%. Treatment usually advised. Complex anatomy may require staged procedures.' },
+        { label: 'Posterior circulation', risk: 'Higher', riskCol: 'cr-orange', desc: 'Basilar tip, PICA, and vertebral aneurysms carry 2–4\xd7 higher rupture risk than anterior circulation lesions of the same size.' },
+      ]},
+      { title: 'High-Risk Features', items: [
+        { label: 'Irregular morphology / bleb', risk: 'Risk+', riskCol: 'cr-red', desc: 'Lobulation, multilobed shape, or daughter sac (bleb) are independent predictors of rupture. Lower threshold for treatment.' },
+        { label: 'Prior SAH from another aneurysm', risk: 'Risk+', riskCol: 'cr-red', desc: 'History of SAH increases rupture risk of co-existing aneurysm. Lower size threshold for intervention.' },
+        { label: 'Symptomatic (3rd nerve palsy)', risk: 'Urgent', riskCol: 'cr-red', desc: '3rd nerve palsy from PCOM aneurysm indicates active expansion. Urgent neurovascular intervention.' },
+      ]},
+    ],
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  fazekas: {
+    name: 'White Matter Hyperintensities — Fazekas Scale',
+    source: 'Fazekas et al. 1987 / STRIVE 2013',
+    desc: 'Grading of T2/FLAIR white matter hyperintensities as a marker of cerebral small vessel disease',
+    fields: [
+      selectField('pvwmh', 'Periventricular WMH', [
+        { value: '0', label: 'Grade 0 — Absent' },
+        { value: '1', label: 'Grade 1 — Caps or pencil-thin lining' },
+        { value: '2', label: 'Grade 2 — Smooth halo' },
+        { value: '3', label: 'Grade 3 — Irregular, extending into deep WM' },
+      ], 'T2/FLAIR signal change around lateral ventricles'),
+      selectField('dwmh', 'Deep / Subcortical WMH', [
+        { value: '0', label: 'Grade 0 — Absent' },
+        { value: '1', label: 'Grade 1 — Punctate foci' },
+        { value: '2', label: 'Grade 2 — Beginning confluence (early confluent)' },
+        { value: '3', label: 'Grade 3 — Large confluent areas' },
+      ], 'T2/FLAIR foci in deep white matter away from ventricles'),
+      radioField('clinical', 'Clinical Context', [
+        { value: 'asymptomatic', label: 'Asymptomatic / incidental' },
+        { value: 'cognitive',    label: 'Cognitive symptoms or memory concern' },
+        { value: 'stroke',       label: 'Stroke / TIA workup' },
+      ]),
+    ],
+    compute(f) {
+      const pv    = parseInt(f.pvwmh) || 0;
+      const dw    = parseInt(f.dwmh)  || 0;
+      const total = pv + dw;
+      const notes = [
+        'Fazekas scale is ordinal — not designed for volumetric quantification.',
+        'WMH are associated with vascular risk factors: hypertension, diabetes, smoking, hyperlipidaemia.',
+        'Confluent WMH (Fazekas \u22652) associated with increased stroke risk and cognitive decline.',
+        'FLAIR is the most sensitive MRI sequence for WMH detection.',
+        'Lacunes in basal ganglia or thalamus suggest more severe small vessel disease.',
+      ];
+      let col, rec;
+      if (total <= 1) {
+        col = 'green';
+        rec = 'Fazekas PV ' + pv + ' / Deep ' + dw + ' — minimal white matter changes. Age-related or mild SVD. No specific intervention required.';
+      } else if (total <= 3 && pv <= 2 && dw <= 2) {
+        col = 'yellow';
+        rec = 'Fazekas PV ' + pv + ' / Deep ' + dw + ' — moderate WMH. Cerebral small vessel disease. Vascular risk factor optimisation recommended (BP, lipids, glucose, smoking cessation). Neurology review if symptomatic.';
+      } else {
+        col = 'orange';
+        rec = 'Fazekas PV ' + pv + ' / Deep ' + dw + ' — severe/confluent WMH. Significant cerebral SVD. Neurology referral. Cognitive assessment. Aggressive vascular risk factor management.';
+      }
+      return result(col, rec, notes);
+    },
+    criteria: [
+      { title: 'Periventricular WMH (PVWMH)', items: [
+        { label: 'Grade 0 — Absent', risk: 'Normal', riskCol: 'cr-green', desc: 'No periventricular signal change.' },
+        { label: 'Grade 1 — Caps / pencil-thin lining', risk: 'Mild', riskCol: 'cr-green', desc: 'Thin cap at frontal or occipital horn tips. Common in healthy adults >50. Usually normal variant.' },
+        { label: 'Grade 2 — Smooth halo', risk: 'Moderate', riskCol: 'cr-yellow', desc: 'Smooth periventricular rim/halo. Moderate small vessel disease. Vascular risk optimisation recommended.' },
+        { label: 'Grade 3 — Irregular, extends into WM', risk: 'Severe', riskCol: 'cr-red', desc: 'Irregular periventricular signal extending into deep white matter. Significant SVD burden. Neurology referral.' },
+      ]},
+      { title: 'Deep / Subcortical WMH (DWMH)', items: [
+        { label: 'Grade 0 — Absent', risk: 'Normal', riskCol: 'cr-green', desc: 'No deep white matter foci.' },
+        { label: 'Grade 1 — Punctate foci', risk: 'Mild', riskCol: 'cr-green', desc: 'Small discrete hyperintense foci. Very common in older adults. Represent enlarged perivascular spaces or minimal SVD.' },
+        { label: 'Grade 2 — Beginning confluence', risk: 'Moderate', riskCol: 'cr-yellow', desc: 'Early confluent lesions. Moderate SVD. Associated with subtle cognitive and gait effects.' },
+        { label: 'Grade 3 — Large confluent areas', risk: 'Severe', riskCol: 'cr-red', desc: 'Large areas of confluent WMH. Severe SVD. Significantly elevated dementia and stroke risk. Cognitive evaluation essential.' },
+      ]},
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════ ABDOMEN / GI ════════
+
+  gallbladder_polyp: {
+    name: 'Gallbladder Polyp — Surveillance & Management',
+    source: 'ESGAR/EAHPBA 2017 / ACR 2022',
+    desc: 'Follow-up and surgical recommendation for incidentally discovered gallbladder polyp',
+    fields: [
+      numField('size', 'Largest Polyp Diameter', 'mm', 'e.g. 8', 'Measure largest polyp on ultrasound'),
+      radioField('mobile', 'Polyp Characteristics', [
+        { value: 'mobile',    label: 'Mobile / echogenic with posterior shadowing (cholesterol polyp)' },
+        { value: 'sessile',   label: 'Sessile / broad-based / non-mobile' },
+        { value: 'uncertain', label: 'Uncertain morphology' },
+      ]),
+      checkboxField('risk', 'Risk Factors for Malignancy (select all that apply)', [
+        { value: 'age',      label: 'Age \u226550 years' },
+        { value: 'psc',      label: 'Primary sclerosing cholangitis (PSC)' },
+        { value: 'solitary', label: 'Solitary polyp' },
+        { value: 'growth',   label: 'Growth \u22652 mm vs prior imaging' },
+        { value: 'indian',   label: 'South Asian / Indian subcontinent ethnicity' },
+      ]),
+    ],
+    compute(f) {
+      const sz = parseFloat(f.size);
+      if (isNaN(sz) || sz <= 0) return null;
+      const mobile  = f.mobile === 'mobile';
+      const sessile = f.mobile === 'sessile';
+      const risks   = Array.isArray(f.risk) ? f.risk : (f.risk ? [f.risk] : []);
+      const hasPSC  = risks.includes('psc');
+      const growth  = risks.includes('growth');
+      const highRisk = risks.length > 0;
+      const notes = [
+        'Most gallbladder polyps are benign cholesterol polyps — mobile, multiple, echogenic.',
+        'True adenomas carry malignant potential; rare below 10 mm.',
+        'Cholecystectomy is the definitive treatment where indicated.',
+        'Ultrasound is the primary surveillance modality.',
+      ];
+      if (sz >= 18 || (sz >= 10 && (hasPSC || growth))) {
+        return result('red', 'Polyp \u226518 mm or \u226510 mm with high-risk features — high risk of malignancy. Cholecystectomy recommended. Pre-operative staging CT/MRI.', notes);
+      }
+      if (sz >= 10) return result('red', 'Polyp \u226510 mm (' + sz + ' mm) — cholecystectomy recommended regardless of other features.', notes);
+      if (sz >= 6 && (highRisk || sessile)) return result('orange', 'Polyp 6–9 mm with risk factors or sessile morphology — cholecystectomy recommended. If patient unfit/declines, 6-monthly ultrasound.', notes);
+      if (sz >= 6) return result('yellow', 'Polyp 6–9 mm, low-risk features — ultrasound at 6 months, then annually \xd75 years. Cholecystectomy if growth >2 mm.', notes);
+      if (mobile) return result('green', 'Polyp <6 mm, mobile (likely cholesterol polyp) — no follow-up required unless symptoms develop.', notes);
+      return result('yellow', 'Polyp <6 mm, sessile or uncertain — ultrasound at 1 year. Discharge if stable and <6 mm.', notes);
+    },
+    criteria: [
+      { title: 'Size-Based Management', items: [
+        { label: '<6 mm — Mobile/echogenic', risk: 'Benign', riskCol: 'cr-green', desc: 'Almost certainly cholesterol polyp. No surveillance required if mobile and echogenic.' },
+        { label: '<6 mm — Sessile/uncertain', risk: 'Low', riskCol: 'cr-yellow', desc: 'US in 1 year. Discharge if stable. Low but non-zero adenoma risk.' },
+        { label: '6–9 mm — No risk factors', risk: 'Intermediate', riskCol: 'cr-yellow', desc: 'US at 6 months, then annually \xd75 years. Cholecystectomy if growth \u22652 mm.' },
+        { label: '6–9 mm — With risk factors', risk: 'High', riskCol: 'cr-orange', desc: 'Cholecystectomy recommended. Risk factors: age \u226550, PSC, solitary, rapid growth, sessile.' },
+        { label: '\u226510 mm', risk: 'Surgery', riskCol: 'cr-red', desc: 'Cholecystectomy in all patients regardless of other features.' },
+        { label: '\u226518 mm', risk: 'Urgent', riskCol: 'cr-red', desc: 'High likelihood of malignancy. Urgent cholecystectomy + staging CT/MRI. Oncology referral.' },
+      ]},
+      { title: 'Malignancy Risk Factors', items: [
+        { label: 'Age \u226550 years', risk: 'Risk+', riskCol: 'cr-orange', desc: 'Higher prevalence of true adenomatous polyps and gallbladder carcinoma in older patients.' },
+        { label: 'PSC', risk: 'High Risk', riskCol: 'cr-red', desc: 'Markedly increases risk of gallbladder dysplasia and carcinoma. Lower cholecystectomy threshold.' },
+        { label: 'Growth \u22652 mm', risk: 'Risk+', riskCol: 'cr-red', desc: 'Progressive growth is a strong indicator of neoplastic polyp. Cholecystectomy regardless of absolute size.' },
+        { label: 'Solitary, sessile polyp', risk: 'Risk+', riskCol: 'cr-orange', desc: 'Multiple small polyps are usually cholesterol polyps. A solitary sessile polyp has higher adenoma risk.' },
+      ]},
+    ],
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  crads: {
+    name: 'C-RADS — CT Colonography Reporting',
+    source: 'ACR C-RADS 2005 / 2021 Update',
+    desc: 'Colonic and extracolonic reporting categories for CT colonography findings',
+    fields: [
+      sectionField('Colonic Findings'),
+      selectField('colonic', 'Colonic C-RADS Category', [
+        { value: 'C0', label: 'C0 — Inadequate study / incomplete preparation' },
+        { value: 'C1', label: 'C1 — Normal colon / no polyp \u22656 mm' },
+        { value: 'C2', label: 'C2 — One or two 6–9 mm polyps' },
+        { value: 'C3', label: 'C3 — \u22653 polyps 6–9 mm OR any polyp \u226510 mm' },
+        { value: 'C4', label: 'C4 — Colonic mass — likely malignant' },
+      ]),
+      sectionField('Extracolonic Findings'),
+      selectField('extracolonic', 'Extracolonic E-RADS Category', [
+        { value: 'E1', label: 'E1 — No clinically significant extracolonic finding' },
+        { value: 'E2', label: 'E2 — Significant finding — diagnosis established, no workup needed' },
+        { value: 'E3', label: 'E3 — Indeterminate finding — workup recommended' },
+        { value: 'E4', label: 'E4 — Potentially significant finding — workup required' },
+      ]),
+    ],
+    compute(f) {
+      const c = f.colonic;
+      const e = f.extracolonic;
+      if (!c && !e) return null;
+      const colonicRecs = {
+        'C0': { col: 'orange', rec: 'C0 — Inadequate study. Repeat CTC with improved bowel prep, or proceed to colonoscopy.' },
+        'C1': { col: 'green',  rec: 'C1 — Normal study. Routine colorectal cancer screening in 5–10 years (per age/risk).' },
+        'C2': { col: 'yellow', rec: "C2 — 1–2 polyps 6–9 mm. Colonoscopy at patient's discretion, or 3-year surveillance CTC." },
+        'C3': { col: 'orange', rec: 'C3 — \u22653 polyps (6–9 mm) or \u22651 polyp \u226510 mm. Colonoscopy with polypectomy recommended.' },
+        'C4': { col: 'red',    rec: 'C4 — Likely colorectal malignancy. Urgent colonoscopy for tissue confirmation. Staging CT chest/abdomen/pelvis.' },
+      };
+      const extrarecs = {
+        'E1': 'E1 — No significant extracolonic finding.',
+        'E2': 'E2 — Significant finding, diagnosis established. No further workup required.',
+        'E3': 'E3 — Indeterminate extracolonic finding. Dedicated follow-up imaging or clinical review recommended.',
+        'E4': 'E4 — Potentially significant extracolonic finding. Further workup required — communicate to referring clinician.',
+      };
+      const notes = [
+        'CTC does not require sedation; CO\u2082 insufflation is standard.',
+        'Polypoid lesions \u226510 mm have ~10% malignancy rate and require polypectomy.',
+        'Flat lesions may be underestimated by CTC; clinical correlation essential.',
+        'Extracolonic findings are found in ~40% of patients; most are benign or incidental.',
+      ];
+      const cr    = colonicRecs[c] || { col: 'blue', rec: '' };
+      const erStr = e ? extrarecs[e] : '';
+      const extra = erStr ? '<div class="sub-result"><div class="sub-result-title">Extracolonic</div>' + erStr + '</div>' : '';
+      return result(cr.col, cr.rec, notes, extra);
+    },
+    criteria: [
+      { title: 'Colonic C-RADS Categories', items: [
+        { label: 'C0 — Inadequate', risk: 'Repeat', riskCol: 'cr-orange', desc: 'Incomplete bowel prep or technical failure. Repeat CTC or direct colonoscopy.' },
+        { label: 'C1 — Normal', risk: 'Routine', riskCol: 'cr-green', desc: 'No polyp \u22656 mm. Routine CRC screening per guideline interval (5–10 years for average risk).' },
+        { label: 'C2 — 1–2 polyps 6–9 mm', risk: 'Moderate', riskCol: 'cr-yellow', desc: '~1% malignancy risk. Patient may elect 3-year CTC follow-up or colonoscopy.' },
+        { label: 'C3 — \u22653 polyps or \u226510 mm', risk: 'High', riskCol: 'cr-orange', desc: 'Higher adenoma burden. ~10% malignancy risk for \u226510 mm polyps. Colonoscopy with polypectomy.' },
+        { label: 'C4 — Likely malignancy', risk: 'Urgent', riskCol: 'cr-red', desc: 'Morphological features of CRC (shouldering, mass lesion). Urgent colonoscopy and staging.' },
+      ]},
+      { title: 'Extracolonic E-RADS Categories', items: [
+        { label: 'E1 — Insignificant', risk: 'None', riskCol: 'cr-green', desc: 'Normal or common age-related finding (e.g. small haemangioma, colonic diverticulosis).' },
+        { label: 'E2 — Established diagnosis', risk: 'None', riskCol: 'cr-green', desc: 'Significant but already known; no further workup needed (e.g. known AAA, nephrolithiasis).' },
+        { label: 'E3 — Indeterminate', risk: 'Workup', riskCol: 'cr-yellow', desc: 'Uncertain significance (e.g. small indeterminate liver lesion). Dedicated follow-up imaging.' },
+        { label: 'E4 — Potentially significant', risk: 'Urgent', riskCol: 'cr-red', desc: 'New clinically significant finding (e.g. renal mass, adrenal nodule, lung nodule). Communicate to referrer.' },
+      ]},
+    ],
+  },
+
 };
 
 // ─── Criteria panel renderer ─────────────────────────────────────────────────
