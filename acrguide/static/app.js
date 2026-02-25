@@ -477,11 +477,14 @@ const GUIDELINES = {
   adrenal: {
     name: 'Adrenal Incidentaloma',
     source: 'ACR / Endocrine Society 2010 / 2016',
-    desc: 'Management of incidentally discovered adrenal masses on CT or MRI',
+    desc: 'Management of incidentally discovered adrenal masses on CT or MRI, with automatic washout calculation',
     fields: [
       numField('size', 'Mass Size', 'cm', 'e.g. 3.2'),
-      numField('hu_unenhanced', 'Unenhanced CT Attenuation', 'HU', 'e.g. 8', 'Leave blank if CT not available'),
-      numField('washout', 'Absolute Contrast Washout', '%', 'e.g. 65', 'Optional: (EPH − DPH) / (EPH − UPH) × 100'),
+      sectionField('CT Attenuation Values (HU)'),
+      numField('hu_unenhanced', 'Unenhanced HU (NCCT)', 'HU', 'e.g. 8',   'Non-contrast CT attenuation — leave blank if unavailable'),
+      numField('hu_enhanced',   'Enhanced HU (portal venous phase)', 'HU', 'e.g. 110', '60–70 s after contrast injection'),
+      numField('hu_delayed',    'Delayed HU (10–15 min phase)',  'HU', 'e.g. 40',  '10–15 minutes after contrast injection'),
+      sectionField('Clinical Details'),
       radioField('bilateral', 'Bilateral Masses?', [
         { value: 'no',  label: 'No (unilateral)' },
         { value: 'yes', label: 'Yes (bilateral)' },
@@ -493,61 +496,123 @@ const GUIDELINES = {
       ]),
     ],
     compute(f) {
-      const sz   = parseFloat(f.size);
-      const hu   = parseFloat(f.hu_unenhanced);
-      const wash = parseFloat(f.washout);
+      const sz  = parseFloat(f.size);
+      const hu  = parseFloat(f.hu_unenhanced);
+      const enh = parseFloat(f.hu_enhanced);
+      const del = parseFloat(f.hu_delayed);
       if (isNaN(sz)) return null;
 
       const notes = [
         'All incidental adrenal masses should have biochemical evaluation: 1 mg DST (Cushing), plasma metanephrines (pheo), and aldosterone/renin if hypertensive.',
         'Bilateral masses require additional work-up to exclude metastases, bilateral pheo, and primary bilateral hyperplasia.',
         'History of malignancy significantly increases risk of adrenal metastasis.',
+        'APW ≥60% or RPW ≥40% is consistent with adenoma on adrenal washout CT.',
       ];
 
-      if (f.hormonal === 'active') {
-        return result('red',
-          'Hormonally active mass — refer to endocrinology/surgery regardless of size.',
-          notes);
+      // Calculate washout if HU values entered
+      let apw = NaN, rpw = NaN;
+      let washoutHtml = '';
+      const hasAPW = !isNaN(hu) && !isNaN(enh) && !isNaN(del) && (enh - hu) !== 0;
+      const hasRPW = !isNaN(enh) && !isNaN(del) && enh !== 0;
+
+      if (hasAPW) apw = ((enh - del) / (enh - hu)) * 100;
+      if (hasRPW) rpw = ((enh - del) / enh) * 100;
+
+      if (hasAPW || hasRPW) {
+        const apwCol  = (!isNaN(apw) && apw >= 60) ? '#27ae60' : '#c0392b';
+        const rpwCol  = (!isNaN(rpw) && rpw >= 40) ? '#27ae60' : '#c0392b';
+        const apwText = hasAPW ? apw.toFixed(1) + '%' : '—';
+        const rpwText = hasRPW ? rpw.toFixed(1) + '%' : '—';
+        const apwInterp = hasAPW ? (apw >= 60 ? ' ✓ adenoma' : ' ✗ non-adenoma') : '';
+        const rpwInterp = hasRPW ? (rpw >= 40 ? ' ✓ adenoma' : ' ✗ non-adenoma') : '';
+
+        washoutHtml = '<div class="sub-result"><div class="sub-result-title">Washout Calculation</div>' +
+          '<table style="width:100%;font-size:.84rem;border-collapse:collapse">' +
+          (!isNaN(hu)  ? '<tr><td style="padding:3px 12px 3px 0;width:55%">Unenhanced HU</td><td>' + hu + ' HU</td></tr>' : '') +
+          (!isNaN(enh) ? '<tr><td style="padding:3px 12px 3px 0">Enhanced HU (PVP)</td><td>' + enh + ' HU</td></tr>' : '') +
+          (!isNaN(del) ? '<tr><td style="padding:3px 12px 3px 0">Delayed HU (15 min)</td><td>' + del + ' HU</td></tr>' : '') +
+          '<tr><td colspan="2"><hr style="margin:4px 0;border-color:#e0e8f0"></td></tr>' +
+          (hasAPW ? '<tr><td style="padding:3px 12px 3px 0"><strong>Absolute Washout (APW)</strong></td>' +
+            '<td><strong style="color:' + apwCol + '">' + apwText + '</strong>' +
+            '<span style="font-size:.75rem;color:' + apwCol + ';margin-left:6px">' + apwInterp + ' (threshold ≥60%)</span></td></tr>' : '') +
+          (hasRPW ? '<tr><td style="padding:3px 12px 3px 0"><strong>Relative Washout (RPW)</strong></td>' +
+            '<td><strong style="color:' + rpwCol + '">' + rpwText + '</strong>' +
+            '<span style="font-size:.75rem;color:' + rpwCol + ';margin-left:6px">' + rpwInterp + ' (threshold ≥40%)</span></td></tr>' : '') +
+          (!hasAPW && hasRPW ? '<tr><td colspan="2" style="font-size:.74rem;color:#7a9ab5;padding-top:4px">APW unavailable — unenhanced HU not entered. RPW used (less specific).</td></tr>' : '') +
+          '</table></div>';
       }
 
-      // Unenhanced HU available
+      if (f.hormonal === 'active') {
+        return result('red', 'Hormonally active mass — refer to endocrinology/surgery regardless of size.', notes, washoutHtml);
+      }
+
+      // Washout-based diagnosis
+      if (!isNaN(apw)) {
+        if (apw >= 60) return result(sz >= 4 ? 'orange' : 'yellow',
+          'Adrenal adenoma — APW ' + apw.toFixed(1) + '% ≥60%.' + (sz >= 4 ? ' Size ≥4 cm: surgery or close follow-up discussion.' : ' Annual follow-up CT × 2 years if non-functioning.'),
+          notes, washoutHtml);
+        return result('orange',
+          'Indeterminate — APW ' + apw.toFixed(1) + '% <60%. Does not meet adenoma washout threshold. Consider MRI chemical shift or biopsy. Surgery for lesions ≥4 cm or growing.',
+          notes, washoutHtml);
+      }
+      if (!isNaN(rpw)) {
+        if (rpw >= 40) return result(sz >= 4 ? 'orange' : 'yellow',
+          'Probable adenoma — RPW ' + rpw.toFixed(1) + '% ≥40% (unenhanced HU not available). ' + (sz >= 4 ? 'Size ≥4 cm: surgical review.' : 'Annual CT × 2 years.'),
+          notes, washoutHtml);
+        return result('orange',
+          'Indeterminate — RPW ' + rpw.toFixed(1) + '% <40% (APW unavailable). Consider MRI chemical shift or biopsy. Surgery for lesions ≥4 cm or growing.',
+          notes, washoutHtml);
+      }
+
+      // No washout data — fall back to unenhanced HU + size
       if (!isNaN(hu)) {
         if (hu <= 10) {
           if (sz < 4)  return result('green',
-            `Lipid-rich adenoma likely (HU=${hu} ≤10). If non-functioning: no imaging follow-up needed. Hormonal work-up recommended.`,
-            notes);
+            'Lipid-rich adenoma likely (HU=' + hu + ' ≤10). Non-functioning: no imaging follow-up needed. Hormonal work-up recommended.',
+            notes, washoutHtml);
           if (sz <= 6) return result('yellow',
-            `Lipid-rich adenoma likely (HU=${hu} ≤10) but size ${sz} cm warrants follow-up CT in 6–12 months. Surgery if growth.`,
-            notes);
+            'Lipid-rich adenoma likely (HU=' + hu + ' ≤10) but size ' + sz + ' cm warrants follow-up CT in 6–12 months. Surgery if growth.',
+            notes, washoutHtml);
           return result('red',
-            `Mass ${sz} cm — surgery recommended regardless of attenuation. Adrenocortical carcinoma cannot be excluded.`,
-            notes);
-        }
-        // HU >10
-        if (!isNaN(wash)) {
-          if (wash >= 60) return result(sz >= 4 ? 'orange' : 'yellow',
-            `Adenoma likely (washout ${wash}% ≥60%). ${sz >= 4 ? 'Urology/surgery consult for size ≥4 cm.' : 'Annual follow-up CT × 2 years to confirm stability.'}`,
-            notes);
-          return result('orange',
-            `Indeterminate/suspicious (HU=${hu}, washout ${wash}% <60%). Consider further imaging (MRI chemical shift) or biopsy. Surgery for growing or functional lesions.`,
-            notes);
+            'Mass ' + sz + ' cm — surgery recommended regardless of attenuation. Adrenocortical carcinoma cannot be excluded.',
+            notes, washoutHtml);
         }
         return result('orange',
-          `Indeterminate attenuation (HU=${hu} >10). Recommend contrast washout CT or MRI chemical shift. If indeterminate, surgery for lesions ≥4 cm.`,
-          notes);
+          'Indeterminate attenuation (HU=' + hu + ' >10, no contrast phases entered). Add enhanced and delayed HU to calculate washout, or perform MRI chemical shift.',
+          notes, washoutHtml);
       }
 
-      // No HU — size-based guidance
-      if (sz < 4) return result('yellow',
-        `No unenhanced HU available. Follow-up imaging (unenhanced CT or MRI chemical shift) to characterise. Hormonal work-up recommended.`,
-        notes);
-      if (sz <= 6) return result('orange',
-        `Mass ${sz} cm — unenhanced CT or MRI chemical shift for characterisation. High suspicion lesion: surgery discussion recommended.`,
-        notes);
-      return result('red',
-        `Mass ${sz} cm — surgery recommended. Risk of adrenocortical carcinoma increases significantly >6 cm.`,
-        notes);
+      // No HU at all
+      if (sz < 4)  return result('yellow', 'No HU data. Unenhanced CT or MRI chemical shift recommended to characterise. Hormonal work-up required.', notes);
+      if (sz <= 6) return result('orange', 'Mass ' + sz + ' cm, no HU data. Adrenal washout CT or MRI chemical shift required. Surgical review for masses ≥4 cm.', notes);
+      return result('red', 'Mass ' + sz + ' cm — surgery recommended. Risk of adrenocortical carcinoma increases significantly >6 cm.', notes);
     },
+    criteria: [
+      { title: 'Washout Thresholds', items: [
+        { label: 'APW ≥60% — Adenoma', risk: 'Adenoma', riskCol: 'cr-green',
+          desc: 'Absolute Percentage Washout = (Enhanced − Delayed) / (Enhanced − Unenhanced) × 100. APW ≥60% has ~88% sensitivity and ~96% specificity for adenoma. Requires all 3 CT phases.' },
+        { label: 'APW <60% — Indeterminate', risk: 'Indeterminate', riskCol: 'cr-orange',
+          desc: 'Does not meet adenoma threshold. Differential includes metastasis, phaeochromocytoma, adrenocortical carcinoma. MRI chemical shift or biopsy may be required.' },
+        { label: 'RPW ≥40% — Probable adenoma', risk: 'Prob adenoma', riskCol: 'cr-yellow',
+          desc: 'Relative Percentage Washout = (Enhanced − Delayed) / Enhanced × 100. Used when unenhanced HU is unavailable. Less specific than APW (~82% sensitivity, ~92% specificity).' },
+        { label: 'RPW <40% — Indeterminate', risk: 'Indeterminate', riskCol: 'cr-orange',
+          desc: 'Relative washout below threshold. More investigation needed.' },
+      ]},
+      { title: 'Unenhanced HU (Lipid Content)', items: [
+        { label: '≤10 HU — Lipid-rich adenoma', risk: 'Benign', riskCol: 'cr-green',
+          desc: 'Low unenhanced attenuation indicates lipid-rich adenoma. ~70% of adenomas are lipid-rich. No washout CT needed if ≤10 HU and non-functioning.' },
+        { label: '>10 HU — Indeterminate', risk: 'Indeterminate', riskCol: 'cr-orange',
+          desc: 'Lipid-poor or non-adenoma. Requires washout CT (add contrast phases) or MRI chemical shift for further characterisation.' },
+      ]},
+      { title: 'Size-Based Management', items: [
+        { label: '<4 cm, benign features', risk: 'Follow-up', riskCol: 'cr-yellow',
+          desc: 'Annual CT or MRI ×2 years. Discharge if stable and hormonally inactive.' },
+        { label: '4–6 cm', risk: 'Surgery review', riskCol: 'cr-orange',
+          desc: 'Surgical consultation recommended regardless of HU. Risk of adrenocortical carcinoma increases above 4 cm.' },
+        { label: '>6 cm', risk: 'Surgery', riskCol: 'cr-red',
+          desc: 'Surgery recommended in surgically fit patients. High risk of adrenocortical carcinoma.' },
+      ]},
+    ],
   },
 
   // ════════════════════════════════════════════════════════ PANCREAS ══════════
