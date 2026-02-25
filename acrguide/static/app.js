@@ -864,7 +864,7 @@ const GUIDELINES = {
         </table>
       </div>`;
 
-      const copyString = `The prostate measures ${pw} x ${pl} x ${ph} cm in right-to-left, anterior-posterior and craniocaudal dimension. Prostate weight is estimated at ${vol} g. PSA density is ${psad} ng/mL/cc.`;
+      const copyString = `The prostate measures ${pw} x ${pl} x ${ph} cm in right-to-left, anterior-posterior and craniocaudal dimension. Prostate weight is estimated at ${vol} g. PSA density is ${psad} ng/mL.`;
 
       return result(colour, interp, notes, extraHtml, copyString);
     },
