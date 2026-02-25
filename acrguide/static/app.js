@@ -797,10 +797,10 @@ const GUIDELINES = {
     source: 'EAU / AUA Guidelines',
     desc: 'Prostate volume (ellipsoid formula) and PSA density with auto-generated report string',
     fields: [
-      numField('psa',     'Serum PSA',                  'ng/mL', 'e.g. 7.2'),
       numField('prost_l', 'Prostate Length (AP)',        'cm',    'e.g. 4.8', 'Anteroposterior on axial MRI/US'),
       numField('prost_w', 'Prostate Width (transverse)', 'cm',    'e.g. 4.2', 'Transverse dimension on axial image'),
       numField('prost_h', 'Prostate Height (SI)',        'cm',    'e.g. 3.8', 'Craniocaudal on sagittal/coronal image'),
+      numField('psa',     'Serum PSA',                  'ng/mL', 'e.g. 7.2'),
     ],
     compute(f) {
       const psa = parseFloat(f.psa);
