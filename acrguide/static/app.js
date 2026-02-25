@@ -864,7 +864,7 @@ const GUIDELINES = {
         </table>
       </div>`;
 
-      const copyString = `Prostate volume: ${vol} mL (${pl} × ${pw} × ${ph} cm, ellipsoid formula). PSA: ${psa} ng/mL. PSA density: ${psad} ng/mL/cc (${label.toLowerCase()}). ${interp}`;
+      const copyString = `The prostate measures ${pw} x ${pl} x ${ph} cm in right-to-left, anterior-posterior and craniocaudal dimension. Prostate weight is estimated at ${vol} g. PSA density is ${psad} ng/mL/cc.`;
 
       return result(colour, interp, notes, extraHtml, copyString);
     },
@@ -1500,6 +1500,859 @@ const GUIDELINES = {
         { label: 'E2 — Established diagnosis', risk: 'None', riskCol: 'cr-green', desc: 'Significant but already known; no further workup needed (e.g. known AAA, nephrolithiasis).' },
         { label: 'E3 — Indeterminate', risk: 'Workup', riskCol: 'cr-yellow', desc: 'Uncertain significance (e.g. small indeterminate liver lesion). Dedicated follow-up imaging.' },
         { label: 'E4 — Potentially significant', risk: 'Urgent', riskCol: 'cr-red', desc: 'New clinically significant finding (e.g. renal mass, adrenal nodule, lung nodule). Communicate to referrer.' },
+      ]},
+    ],
+  },
+  // ════════════════════════════════════════════════════════ MSK / BONE ══════════
+
+  bone_lesion: {
+    name: 'Bone Lesion — Lodwick Characterisation',
+    source: 'Lodwick Classification / ACR Appropriateness Criteria',
+    desc: 'Imaging characterisation of incidental or symptomatic bone lesion on X-ray or CT',
+    fields: [
+      selectField('pattern', 'Osteolysis Pattern (Zone of Transition)', [
+        { value: 'IA',  label: 'IA — Geographic lysis, sclerotic rim (narrow zone)' },
+        { value: 'IB',  label: 'IB — Geographic lysis, no sclerotic rim, well-defined' },
+        { value: 'IC',  label: 'IC — Geographic lysis, ill-defined margin' },
+        { value: 'II',  label: 'II — Moth-eaten (multiple small holes)' },
+        { value: 'III', label: 'III — Permeated (poorly defined, cortex intact or barely visible)' },
+      ]),
+      checkboxField('features', 'Additional Aggressive Features (select all that apply)', [
+        { value: 'periosteal',  label: 'Periosteal reaction (Codman triangle, sunburst, lamellated)' },
+        { value: 'cortex',      label: 'Cortical destruction or expansion' },
+        { value: 'soft_tissue', label: 'Soft tissue mass' },
+        { value: 'matrix',      label: 'Aggressive matrix mineralisation' },
+      ]),
+      selectField('matrix', 'Matrix Mineralisation Pattern (if present)', [
+        { value: 'none',      label: 'None / lytic' },
+        { value: 'osteoid',   label: 'Osteoid (dense, cloud-like, ivory)' },
+        { value: 'chondroid', label: 'Chondroid (arcs, rings, stippled calcification)' },
+        { value: 'fibrous',   label: 'Fibrous / ground-glass' },
+      ]),
+      radioField('location', 'Lesion Location', [
+        { value: 'epiphysis',   label: 'Epiphysis / apophysis' },
+        { value: 'metaphysis',  label: 'Metaphysis' },
+        { value: 'diaphysis',   label: 'Diaphysis' },
+        { value: 'flat',        label: 'Flat bone (pelvis, rib, scapula, skull)' },
+      ]),
+      numField('age', 'Patient Age', 'years', 'e.g. 35', 'Age strongly influences differential diagnosis'),
+    ],
+    compute(f) {
+      const pattern  = f.pattern;
+      const features = Array.isArray(f.features) ? f.features : (f.features ? [f.features] : []);
+      const nAggressive = features.length;
+      const age = parseFloat(f.age) || 0;
+      const notes = [
+        'Lodwick class I lesions are usually benign; class II/III suggest malignancy until proven otherwise.',
+        'Age is the most important epidemiological predictor: <30 years favours Ewing sarcoma/osteosarcoma; 40–60 years favours metastases or myeloma.',
+        'MRI is the gold standard for local staging; CT chest/abdomen/pelvis for staging if malignancy suspected.',
+        'Bone scintigraphy or whole-body MRI for multifocal disease assessment.',
+        'Biopsy should be planned with orthopaedic oncology to ensure correct tract placement.',
+      ];
+      const diffByAge = age < 30
+        ? 'In patients <30 years: osteosarcoma, Ewing sarcoma, giant cell tumour, simple bone cyst, aneurysmal bone cyst.'
+        : age < 60
+          ? 'In patients 30–60 years: giant cell tumour, chondrosarcoma, metastasis, lymphoma, myeloma.'
+          : 'In patients >60 years: metastasis (most common), myeloma, lymphoma, primary bone sarcoma (rare).';
+
+      if (pattern === 'IA' && nAggressive === 0) {
+        return result('green',
+          'Lodwick IA — benign-appearing lesion. Geographic lysis with sclerotic margin, no aggressive features. Likely benign (e.g. non-ossifying fibroma, simple bone cyst, enchondroma, fibrous dysplasia). Radiological follow-up to confirm stability.',
+          [...notes, diffByAge]);
+      }
+      if (pattern === 'IB' && nAggressive === 0) {
+        return result('yellow',
+          'Lodwick IB — probably benign. Well-defined geographic lysis without sclerotic rim. MRI recommended for further characterisation. Orthopaedic review.',
+          [...notes, diffByAge]);
+      }
+      if (pattern === 'IC' || (pattern === 'IB' && nAggressive >= 1)) {
+        return result('orange',
+          'Lodwick IC / IB with aggressive features — indeterminate. Ill-defined margin suggests active lesion. MRI + orthopaedic oncology referral. Biopsy likely required.',
+          [...notes, diffByAge]);
+      }
+      return result('red',
+        'Lodwick ' + pattern + ' — aggressive pattern. High suspicion for malignancy (primary sarcoma, metastasis, myeloma, lymphoma). Urgent MRI + CT staging + orthopaedic oncology referral. Biopsy planning required.',
+        [...notes, diffByAge]);
+    },
+    criteria: [
+      { title: 'Lodwick Classification', items: [
+        { label: 'IA — Sclerotic margin', risk: 'Benign', riskCol: 'cr-green', desc: 'Geographic lysis with complete sclerotic rim. Narrow zone of transition. Almost always benign (NOF, simple cyst, enchondroma). No aggressive features.' },
+        { label: 'IB — Well-defined, no sclerosis', risk: 'Prob Benign', riskCol: 'cr-yellow', desc: 'Geographic lysis with well-defined but non-sclerotic margin. Usually benign but MRI recommended.' },
+        { label: 'IC — Ill-defined margin', risk: 'Indeterminate', riskCol: 'cr-orange', desc: 'Geographic lysis with poorly defined zone of transition. Indeterminate; active lesion. Biopsy consideration.' },
+        { label: 'II — Moth-eaten', risk: 'Aggressive', riskCol: 'cr-red', desc: 'Multiple small areas of lysis that do not coalesce. Wide zone of transition. Strongly suggests malignancy.' },
+        { label: 'III — Permeated', risk: 'Malignant', riskCol: 'cr-red', desc: 'Innumerable tiny holes permeate the cortex. Cortex may appear intact at low resolution. Highly aggressive; round cell tumours (Ewing, lymphoma, myeloma).' },
+      ]},
+      { title: 'Aggressive Features', items: [
+        { label: 'Periosteal reaction', risk: 'Aggressive', riskCol: 'cr-red', desc: 'Codman triangle (elevated periosteum at lesion edge) or sunburst/lamellated pattern all indicate aggressive biology. Codman is NOT pathognomonic of osteosarcoma.' },
+        { label: 'Cortical destruction', risk: 'Aggressive', riskCol: 'cr-red', desc: 'Thinning, expansion, or breakthrough of cortex. Cortical destruction with soft tissue mass strongly suggests malignancy.' },
+        { label: 'Soft tissue mass', risk: 'Malignant', riskCol: 'cr-red', desc: 'Extension beyond the cortex into surrounding soft tissues. Nearly always associated with malignant or aggressive benign lesions (aneurysmal bone cyst, giant cell tumour).' },
+      ]},
+      { title: 'Matrix Types', items: [
+        { label: 'Osteoid matrix', risk: '', riskCol: 'cr-grey', desc: 'Dense, ivory, cloud-like mineralisation. Suggests osteosarcoma (aggressive) or bone island (sclerotic, benign). Osteosarcoma matrix is typically not well-organised.' },
+        { label: 'Chondroid matrix', risk: '', riskCol: 'cr-grey', desc: 'Arcs, rings, and stippled calcification (popcorn). Suggests enchondroma (benign) or chondrosarcoma (aggressive). Endosteal scalloping >2/3 cortex thickness favours chondrosarcoma.' },
+        { label: 'Ground-glass', risk: '', riskCol: 'cr-grey', desc: 'Hazy, uniform density replacing normal trabeculae. Classic for fibrous dysplasia; shepherd\'s crook deformity in proximal femur.' },
+      ]},
+    ],
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  meniscal_tear: {
+    name: 'Meniscal Tear — MRI Stoller Grading',
+    source: 'Stoller 1987 / ISAKOS Classification',
+    desc: 'MRI grading of meniscal signal and tear classification with management guidance',
+    fields: [
+      selectField('grade', 'Stoller MRI Grade', [
+        { value: '0', label: 'Grade 0 — Normal, homogeneous low signal' },
+        { value: '1', label: 'Grade 1 — Focal globular intrameniscal signal (not reaching surface)' },
+        { value: '2', label: 'Grade 2 — Linear intrameniscal signal (not reaching surface)' },
+        { value: '3', label: 'Grade 3 — Signal reaches articular surface = TEAR' },
+      ]),
+      selectField('location', 'Meniscus / Location', [
+        { value: 'medial_posterior', label: 'Medial — Posterior horn' },
+        { value: 'medial_body',      label: 'Medial — Body' },
+        { value: 'medial_anterior',  label: 'Medial — Anterior horn' },
+        { value: 'lateral_posterior', label: 'Lateral — Posterior horn' },
+        { value: 'lateral_body',      label: 'Lateral — Body' },
+        { value: 'lateral_anterior',  label: 'Lateral — Anterior horn' },
+      ]),
+      selectField('pattern', 'Tear Pattern (if Grade 3)', [
+        { value: 'na',            label: 'N/A — Not a tear (Grade 0-2)' },
+        { value: 'horizontal',    label: 'Horizontal cleavage tear' },
+        { value: 'vertical',      label: 'Vertical / longitudinal tear' },
+        { value: 'bucket_handle', label: 'Bucket-handle tear (displaced fragment)' },
+        { value: 'radial',        label: 'Radial (transverse) tear' },
+        { value: 'complex',       label: 'Complex / degenerative tear' },
+        { value: 'root',          label: 'Root tear (posterior root)' },
+      ]),
+      radioField('symptoms', 'Clinical Symptoms?', [
+        { value: 'none',    label: 'Asymptomatic / incidental' },
+        { value: 'present', label: 'Symptomatic — pain, locking, effusion' },
+      ]),
+      numField('age', 'Patient Age', 'years', 'e.g. 42'),
+    ],
+    compute(f) {
+      const grade = parseInt(f.grade);
+      const symp  = f.symptoms === 'present';
+      const age   = parseFloat(f.age) || 0;
+      const notes = [
+        'Grade 1 and 2 signal represents intrasubstance mucinous degeneration — NOT a tear. Do not report as tear.',
+        'Grade 3 signal reaching at least one articular surface = tear by MRI definition.',
+        'MRI has ~90% sensitivity and specificity for medial meniscal tears; slightly lower for lateral.',
+        'Clinical correlation is essential — asymptomatic meniscal tears are common in patients >40 years.',
+        'Joint-line tenderness, McMurray test, and Thessaly test aid clinical diagnosis.',
+      ];
+      if (grade <= 1) return result('green', 'Stoller Grade ' + grade + ' — no tear. Intrasubstance signal change represents mucinous degeneration. No surgical intervention required. Conservative management.', notes);
+      if (grade === 2) return result('yellow', 'Stoller Grade 2 — linear intrameniscal signal, NOT reaching articular surface. Not a tear. Conservative management. May progress to Grade 3 with continued loading.', notes);
+      // Grade 3 — tear
+      const pattern = f.pattern;
+      if (pattern === 'bucket_handle') {
+        return result('red', 'Grade 3 — Bucket-handle tear with displaced fragment. Urgent orthopaedic referral. Surgical repair (meniscal repair or partial meniscectomy) usually required. Risk of locked knee.', notes);
+      }
+      if (pattern === 'root') {
+        return result('red', 'Grade 3 — Posterior root tear. High risk of extrusion and accelerated osteoarthritis. Orthopaedic referral for root repair consideration, especially in younger patients.', notes);
+      }
+      if (!symp && age > 45) {
+        return result('yellow', 'Grade 3 meniscal tear — asymptomatic in patient >45 years. Likely degenerative. Conservative management initially (physiotherapy, weight loss). Orthopaedic review if symptoms develop. Meniscectomy not shown to benefit asymptomatic degenerative tears.', notes);
+      }
+      if (!symp) {
+        return result('yellow', 'Grade 3 meniscal tear — currently asymptomatic. Conservative management with orthopaedic follow-up. Activity modification.', notes);
+      }
+      return result('orange', 'Grade 3 meniscal tear — symptomatic ' + (pattern !== 'na' ? '(' + pattern.replace('_', ' ') + ')' : '') + '. Orthopaedic referral. Consider arthroscopy if symptoms refractory to 6 weeks of conservative management (physiotherapy, analgesia, intra-articular injection).', notes);
+    },
+    criteria: [
+      { title: 'Stoller MRI Grading', items: [
+        { label: 'Grade 0 — Normal', risk: 'Normal', riskCol: 'cr-green', desc: 'Homogeneous low signal. Normal meniscus.' },
+        { label: 'Grade 1 — Focal globular signal', risk: 'Not a tear', riskCol: 'cr-green', desc: 'Focal, round or globular increased signal that does NOT reach the articular surface. Represents mucinous degeneration. NOT a tear — do not report as such.' },
+        { label: 'Grade 2 — Linear signal', risk: 'Not a tear', riskCol: 'cr-yellow', desc: 'Linear increased signal that does NOT reach the articular surface. Intrasubstance degeneration. NOT a tear. May progress to Grade 3.' },
+        { label: 'Grade 3 — Signal reaches surface', risk: 'TEAR', riskCol: 'cr-red', desc: 'Increased signal reaching at least one articular surface = tear. Clinical correlation required for management. In patients >45 years, often degenerative.' },
+      ]},
+      { title: 'Tear Patterns', items: [
+        { label: 'Horizontal cleavage', risk: 'Degenerative', riskCol: 'cr-yellow', desc: 'Horizontal split through meniscus parallel to tibial plateau. Most common degenerative pattern. Usually in older patients.' },
+        { label: 'Bucket-handle', risk: 'Urgent', riskCol: 'cr-red', desc: 'Vertical longitudinal tear with displacement of inner fragment into intercondylar notch. May cause locked knee. Surgical referral.' },
+        { label: 'Radial / transverse', risk: 'Significant', riskCol: 'cr-orange', desc: 'Perpendicular to free margin. Disrupts circumferential fibres and "hoop stress" function. Can lead to meniscal extrusion.' },
+        { label: 'Root tear', risk: 'Urgent', riskCol: 'cr-red', desc: 'Tear at posterior root attachment. Functionally equivalent to total meniscectomy. Rapidly accelerates articular cartilage loss.' },
+      ]},
+    ],
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  rotator_cuff: {
+    name: 'Rotator Cuff Tear — MRI Grading',
+    source: 'Balich 1997 / AOSSM / AAOS Guidelines',
+    desc: 'MRI-based grading of rotator cuff pathology and management guidance',
+    fields: [
+      radioField('thickness', 'Tear Type', [
+        { value: 'none',     label: 'No tear — tendinopathy / tendinosis only' },
+        { value: 'partial',  label: 'Partial thickness tear' },
+        { value: 'full',     label: 'Full thickness tear' },
+      ]),
+      selectField('tendon', 'Tendon Involved', [
+        { value: 'supraspinatus',   label: 'Supraspinatus (most common)' },
+        { value: 'infraspinatus',   label: 'Infraspinatus' },
+        { value: 'subscapularis',   label: 'Subscapularis' },
+        { value: 'teres_minor',     label: 'Teres minor' },
+        { value: 'multiple',        label: 'Multiple tendons' },
+      ]),
+      selectField('partial_surface', 'Partial Tear — Surface (if applicable)', [
+        { value: 'na',       label: 'N/A' },
+        { value: 'articular', label: 'Articular surface (undersurface)' },
+        { value: 'bursal',    label: 'Bursal surface' },
+        { value: 'intratendinous', label: 'Intratendinous' },
+      ]),
+      selectField('full_size', 'Full Thickness Tear Size (if applicable)', [
+        { value: 'na',      label: 'N/A' },
+        { value: 'small',   label: 'Small — <1 cm' },
+        { value: 'medium',  label: 'Medium — 1–3 cm' },
+        { value: 'large',   label: 'Large — 3–5 cm' },
+        { value: 'massive', label: 'Massive — >5 cm or \u22652 tendons' },
+      ]),
+      radioField('retraction', 'Tendon Retraction / Muscle Atrophy?', [
+        { value: 'no',  label: 'No significant retraction or atrophy' },
+        { value: 'yes', label: 'Yes — significant retraction or fatty atrophy (Goutallier \u22652)' },
+      ]),
+      radioField('symptoms', 'Symptomatic?', [
+        { value: 'none',    label: 'Asymptomatic / incidental' },
+        { value: 'present', label: 'Symptomatic — pain, weakness, restricted range of motion' },
+      ]),
+    ],
+    compute(f) {
+      const notes = [
+        'Rotator cuff tears are common incidental findings — prevalence increases with age (>50% in patients >60 years).',
+        'Partial tears: PASTA (Partial Articular-Surface Tendon Avulsion) is most common partial tear subtype.',
+        'Full-thickness tears with significant retraction and fatty atrophy have lower surgical repair success.',
+        'MRI arthrography improves sensitivity for partial tears and labral pathology.',
+        'Ultrasound (dynamic) can diagnose full-thickness tears with equivalent sensitivity to MRI.',
+      ];
+      if (f.thickness === 'none') {
+        const symp = f.symptoms === 'present';
+        return result(symp ? 'yellow' : 'green',
+          symp ? 'Rotator cuff tendinopathy — no tear. Conservative management: physiotherapy (strengthening, range of motion), NSAIDs, subacromial corticosteroid injection. Orthopaedic referral if refractory at 3 months.'
+               : 'Rotator cuff tendinopathy — asymptomatic. No intervention required. Monitor.',
+          notes);
+      }
+      if (f.thickness === 'partial') {
+        const symp = f.symptoms === 'present';
+        const surf = f.partial_surface;
+        const surfStr = surf && surf !== 'na' ? ' (' + surf.replace('_', ' ') + ' surface)' : '';
+        return result(symp ? 'orange' : 'yellow',
+          symp ? 'Partial thickness tear' + surfStr + ' — symptomatic. Conservative management 3–6 months (physiotherapy, injection). Orthopaedic referral if refractory. Surgical repair (debridement or completion and repair) for failed conservative management.'
+               : 'Partial thickness tear' + surfStr + ' — asymptomatic/incidental. Conservative management. Orthopaedic follow-up. Risk of progression to full thickness over time.',
+          notes);
+      }
+      // Full thickness
+      const size    = f.full_size;
+      const retract = f.retraction === 'yes';
+      const symp    = f.symptoms === 'present';
+      const tendon  = f.tendon;
+      if (size === 'massive' || tendon === 'multiple') {
+        return result('red',
+          'Massive rotator cuff tear / multi-tendon involvement.' + (retract ? ' Significant retraction and/or fatty atrophy reduces reparability.' : '') + ' Orthopaedic surgery referral for repair feasibility assessment. Options: surgical repair, tendon transfer, superior capsule reconstruction, reverse shoulder arthroplasty.',
+          notes);
+      }
+      if (retract) {
+        return result('orange',
+          'Full thickness tear (' + (size || '') + ') with significant retraction/atrophy — reduced reparability. Orthopaedic referral. Surgical repair more complex; consider patient age, activity demands, and timing.',
+          notes);
+      }
+      return result(symp ? 'orange' : 'yellow',
+        symp ? 'Full thickness tear (' + (size || '') + ', ' + (tendon || 'supraspinatus') + ') — symptomatic. Conservative management 3–6 months. Surgical repair recommended for young, active patients with acute tear or failure of conservative treatment.'
+             : 'Full thickness tear (' + (size || '') + ') — asymptomatic/incidental. Conservative management. Monitor for symptom development. Orthopaedic review.',
+        notes);
+    },
+    criteria: [
+      { title: 'Partial Thickness Tear Classification', items: [
+        { label: 'Articular surface (PASTA)', risk: 'Most common', riskCol: 'cr-yellow', desc: 'Undersurface tear. Often missed on non-arthrographic MRI. >50% cross-sectional involvement has higher progression risk.' },
+        { label: 'Bursal surface', risk: 'Partial', riskCol: 'cr-yellow', desc: 'Upper surface tear. Seen as defect at bursa-tendon interface. Associated with acromial impingement.' },
+        { label: 'Intratendinous', risk: 'Partial', riskCol: 'cr-yellow', desc: 'Internal tear not reaching either surface. May be missed on standard MRI. MRI arthrography recommended for complete evaluation.' },
+      ]},
+      { title: 'Full Thickness Tear Size', items: [
+        { label: 'Small — <1 cm', risk: 'Repairable', riskCol: 'cr-green', desc: 'Easily repairable. Good outcomes with arthroscopic repair.' },
+        { label: 'Medium — 1–3 cm', risk: 'Repairable', riskCol: 'cr-yellow', desc: 'Good surgical outcomes. Repair recommended in younger, active patients.' },
+        { label: 'Large — 3–5 cm', risk: 'Complex', riskCol: 'cr-orange', desc: 'More complex repair. Outcomes depend on tissue quality and retraction. Early referral preferred.' },
+        { label: 'Massive — >5 cm / \u22652 tendons', risk: 'Poor outcome', riskCol: 'cr-red', desc: 'Irreparable in some. Options include partial repair, tendon transfer, superior capsule reconstruction, or reverse arthroplasty. Fatty atrophy/retraction limits options.' },
+      ]},
+      { title: 'Goutallier Fatty Atrophy', items: [
+        { label: 'Grade 0–1 — Normal / mild', risk: 'Good', riskCol: 'cr-green', desc: 'No or minimal fatty infiltration. Muscle quality preserved. Good outcomes with repair.' },
+        { label: 'Grade 2 — <50% fatty infiltration', risk: 'Moderate', riskCol: 'cr-yellow', desc: 'Less than half of muscle replaced by fat. Repair still beneficial in most cases.' },
+        { label: 'Grade 3–4 — \u226550% fatty infiltration', risk: 'Poor', riskCol: 'cr-red', desc: 'More than half of muscle is fatty. Poor prognosis for functional recovery after repair. May be considered irreparable.' },
+      ]},
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════ KIDNEY / URINARY ════
+
+  hydronephrosis: {
+    name: 'Hydronephrosis — SFU Grading & Management',
+    source: 'SFU Grading System / EAU Guidelines',
+    desc: 'Grading of renal pelvicalyceal dilation and management guidance',
+    fields: [
+      selectField('grade', 'SFU Hydronephrosis Grade', [
+        { value: '0', label: 'Grade 0 — No dilation, normal kidney' },
+        { value: '1', label: 'Grade 1 — Mild: renal pelvis only, no calyceal dilation' },
+        { value: '2', label: 'Grade 2 — Mild-moderate: pelvis + major calyces dilated' },
+        { value: '3', label: 'Grade 3 — Moderate: pelvis + major + minor calyces, cortex preserved' },
+        { value: '4', label: 'Grade 4 — Severe: cortical thinning present' },
+      ]),
+      numField('apd', 'Anteroposterior Pelvic Diameter', 'mm', 'e.g. 14', 'On coronal/axial US or MRI, measured at renal pelvis'),
+      radioField('side', 'Laterality', [
+        { value: 'unilateral', label: 'Unilateral' },
+        { value: 'bilateral',  label: 'Bilateral' },
+      ]),
+      radioField('cause', 'Likely Cause (if known)', [
+        { value: 'unknown',      label: 'Unknown / to be determined' },
+        { value: 'stone',        label: 'Calculus (ureteric stone)' },
+        { value: 'obstruction',  label: 'Extrinsic obstruction (mass, lymphadenopathy, retroperitoneal fibrosis)' },
+        { value: 'upj',          label: 'Intrinsic obstruction — UPJ (ureteropelvic junction stenosis)' },
+        { value: 'physiological', label: 'Physiological — pregnancy' },
+        { value: 'vesicoureteral', label: 'Vesicoureteral reflux' },
+      ]),
+      radioField('symptoms', 'Symptomatic?', [
+        { value: 'no',  label: 'Asymptomatic / incidental' },
+        { value: 'yes', label: 'Symptomatic — flank pain, fever, reduced urine output' },
+      ]),
+    ],
+    compute(f) {
+      const grade = parseInt(f.grade) || 0;
+      const symp  = f.symptoms === 'yes';
+      const apd   = parseFloat(f.apd) || 0;
+      const bilat = f.side === 'bilateral';
+      const notes = [
+        'MAG3 or DTPA renogram (diuretic nuclear medicine) quantifies split renal function and obstruction.',
+        'Obstruction with infection (pyonephrosis) requires urgent drainage.',
+        'Bilateral hydronephrosis suggests bladder outlet obstruction (BPH, bladder neck, neurogenic bladder) until proven otherwise.',
+        'CT urogram or MR urogram is the gold standard for defining ureteric anatomy and cause.',
+        'In pregnancy, mild-moderate right-sided hydronephrosis is physiological from uterine compression.',
+      ];
+      if (symp && (grade >= 3 || bilat)) {
+        return result('red',
+          'Grade ' + grade + ' hydronephrosis — symptomatic' + (bilat ? ', bilateral' : '') + '. Urgent urology referral. Risk of pyonephrosis/obstructive uropathy. Consider nephrostomy/ureteric stent if high-grade obstruction or infection.',
+          notes);
+      }
+      if (grade === 0) return result('green', 'No hydronephrosis. Normal pelvicalyceal system.', notes);
+      if (grade === 1 && apd < 10 && !symp) return result('green', 'Grade 1 — mild dilation of renal pelvis only. APD ' + (apd || 'not measured') + ' mm. Likely physiological or minimal obstruction. Repeat ultrasound in 3–6 months if aetiology unknown.', notes);
+      if (grade <= 2 && !symp) return result('yellow', 'Grade ' + grade + ' hydronephrosis (APD ' + (apd || '?') + ' mm) — mild to moderate. Urology referral. Diuretic renogram to assess function. Monitor renal function (eGFR, creatinine).', notes);
+      if (grade === 3 && !symp) return result('orange', 'Grade 3 hydronephrosis — moderate with preserved cortex. Urology referral. Diuretic renogram. CT/MR urogram to define aetiology. Intervention may be required.', notes);
+      return result('orange', 'Grade 4 hydronephrosis — severe, cortical thinning.' + (symp ? ' Symptomatic — urgent urology referral.' : ' Urology referral. Assess for functional kidney loss. Intervention (pyeloplasty, stent, nephrostomy) likely required.'), notes);
+    },
+    criteria: [
+      { title: 'SFU Hydronephrosis Grading', items: [
+        { label: 'Grade 0 — Normal', risk: 'Normal', riskCol: 'cr-green', desc: 'No dilation of renal pelvis or calyces.' },
+        { label: 'Grade 1 — Pelvis only', risk: 'Mild', riskCol: 'cr-green', desc: 'Renal pelvis mildly dilated; calyces not seen. APD typically <10 mm. Likely physiological.' },
+        { label: 'Grade 2 — Pelvis + major calyces', risk: 'Mild-Mod', riskCol: 'cr-yellow', desc: 'Renal pelvis and major calyces visible. No parenchymal thinning. APD 10–15 mm range. Urology referral and renogram.' },
+        { label: 'Grade 3 — + minor calyces', risk: 'Moderate', riskCol: 'cr-orange', desc: 'Pelvis, major and minor calyces all dilated. Cortex appears normal. APD often >15 mm. Obstruction likely. Intervention often required.' },
+        { label: 'Grade 4 — Cortical thinning', risk: 'Severe', riskCol: 'cr-red', desc: 'Gross dilation with thinning of renal parenchyma. Renal functional impairment. Urgent intervention to preserve renal function.' },
+      ]},
+      { title: 'APD Thresholds (Adults)', items: [
+        { label: '<10 mm', risk: 'Low risk', riskCol: 'cr-green', desc: 'Usually physiological or minimal obstruction. Monitor.' },
+        { label: '10–20 mm', risk: 'Moderate', riskCol: 'cr-yellow', desc: 'Clinically significant in the context of symptoms or functional impairment. Renogram indicated.' },
+        { label: '>20 mm', risk: 'Significant', riskCol: 'cr-red', desc: 'High likelihood of significant obstruction. Urgent urology referral and functional assessment.' },
+      ]},
+    ],
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  urinary_stone: {
+    name: 'Urinary Stone — Size & Location Management (AUA 2016)',
+    source: 'AUA Stone Guidelines 2016 / EAU 2023',
+    desc: 'Non-contrast CT-based stone management recommendations',
+    fields: [
+      numField('size', 'Maximum Stone Diameter', 'mm', 'e.g. 6', 'Longest axis on non-contrast CT'),
+      selectField('location', 'Stone Location', [
+        { value: 'upper_calyx',   label: 'Kidney — Upper / mid calyx' },
+        { value: 'lower_calyx',   label: 'Kidney — Lower pole' },
+        { value: 'renal_pelvis',  label: 'Kidney — Renal pelvis' },
+        { value: 'prox_ureter',   label: 'Ureter — Proximal (UPJ to upper sacrum)' },
+        { value: 'mid_ureter',    label: 'Ureter — Mid ureter (sacrum level)' },
+        { value: 'distal_ureter', label: 'Ureter — Distal (VUJ / lower ureter)' },
+        { value: 'bladder',       label: 'Bladder' },
+      ]),
+      radioField('symptoms', 'Symptomatic?', [
+        { value: 'no',  label: 'Asymptomatic / incidental' },
+        { value: 'yes', label: 'Symptomatic — colic, haematuria' },
+      ]),
+      radioField('obstruction', 'Hydronephrosis / Obstruction?', [
+        { value: 'no',     label: 'No / minimal' },
+        { value: 'mild',   label: 'Mild' },
+        { value: 'severe', label: 'Moderate-severe' },
+      ]),
+      radioField('solitary', 'Solitary Kidney or Bilateral Stones?', [
+        { value: 'no',  label: 'No — contralateral kidney normal' },
+        { value: 'yes', label: 'Yes — solitary kidney or bilateral stones' },
+      ]),
+    ],
+    compute(f) {
+      const sz      = parseFloat(f.size);
+      if (isNaN(sz) || sz <= 0) return null;
+      const loc     = f.location;
+      const symp    = f.symptoms === 'yes';
+      const obst    = f.obstruction;
+      const solitary = f.solitary === 'yes';
+      const notes = [
+        'Non-contrast CT KUB is the gold standard for stone detection and sizing.',
+        'Stone composition affects fragmentation: calcium oxalate monohydrate and brushite are hard; cystine is resistant to SWL.',
+        'Spontaneous passage rates: <4 mm ~80%, 4–6 mm ~60%, >6 mm ~20%.',
+        'Alpha-blockers (tamsulosin 0.4 mg OD) speed passage of distal ureteric stones \u226410 mm (medical expulsive therapy).',
+        'Infected obstructed system (pyonephrosis) = urological emergency — decompress with nephrostomy or stent.',
+      ];
+      if (obst === 'severe' || solitary) {
+        return result('red',
+          (solitary ? 'Solitary kidney / bilateral stones — ' : '') + (obst === 'severe' ? 'Significant obstruction — ' : '') + 'urgent urology referral. ' + (obst === 'severe' ? 'Consider ureteric stent or nephrostomy. ' : '') + 'Risk of renal impairment.',
+          notes);
+      }
+      const isUreteral = loc.includes('ureter');
+      const isRenal    = loc.includes('calyx') || loc === 'renal_pelvis';
+      const isDistal   = loc === 'distal_ureter';
+      let col, rec;
+      if (sz <= 4) {
+        col = symp ? 'yellow' : 'green';
+        rec = 'Stone \u22644 mm (' + sz + ' mm, ' + loc.replace(/_/g, ' ') + ') — high likelihood of spontaneous passage (~80%). ' + (symp ? 'Medical expulsive therapy (tamsulosin) for ureteral stones. Analgesia. Urology follow-up.' : 'Observe. Strain urine. Repeat imaging in 4–6 weeks.');
+      } else if (sz <= 6) {
+        col = 'yellow';
+        rec = 'Stone 4–6 mm (' + sz + ' mm, ' + loc.replace(/_/g, ' ') + ') — ~60% chance of passage. ' + (isUreteral ? 'Medical expulsive therapy. Urology follow-up in 2–4 weeks. ' : '') + 'SWL or URS if no passage within 4–6 weeks.';
+      } else if (sz <= 10) {
+        col = 'orange';
+        rec = 'Stone 6–10 mm (' + sz + ' mm, ' + loc.replace(/_/g, ' ') + ') — unlikely to pass spontaneously. Urology referral. ' + (isUreteral ? 'Ureteroscopy (URS) preferred for ureteral stones. ' : '') + (isRenal ? 'SWL first-line for renal stones (if anatomy suitable); URS alternative. ' : '') + 'Medical expulsive therapy for distal ureteral stones while awaiting procedure.';
+      } else if (sz <= 20) {
+        col = 'red';
+        rec = 'Stone 10–20 mm (' + sz + ' mm, ' + loc.replace(/_/g, ' ') + ') — intervention required. ' + (isRenal ? 'SWL for upper/mid calyx; URS or PCNL for lower pole stones >10 mm. ' : '') + (isUreteral ? 'Ureteroscopy (URS) recommended. ' : '') + 'Urology referral.';
+      } else {
+        col = 'red';
+        rec = 'Stone >20 mm (' + sz + ' mm, ' + loc.replace(/_/g, ' ') + ') — PCNL (percutaneous nephrolithotomy) is first-line. Staghorn calculi require multisession PCNL or combination therapy. Urgent urology referral.';
+      }
+      return result(col, rec, notes);
+    },
+    criteria: [
+      { title: 'Size-Based Management', items: [
+        { label: '\u22644 mm', risk: 'Observe', riskCol: 'cr-green', desc: '~80% pass spontaneously within 40 days. Conservative management with analgesia and hydration. Strain urine for stone analysis.' },
+        { label: '4–6 mm', risk: 'MET', riskCol: 'cr-yellow', desc: '~60% passage rate. Medical expulsive therapy (tamsulosin 0.4 mg OD) accelerates passage of distal ureteral stones. Urology follow-up.' },
+        { label: '6–10 mm', risk: 'SWL / URS', riskCol: 'cr-orange', desc: '~20% spontaneous passage. SWL for renal stones; URS preferred for ureteral stones. PCNL rarely needed.' },
+        { label: '10–20 mm', risk: 'URS / PCNL', riskCol: 'cr-red', desc: 'Active intervention required. PCNL or SWL for large renal stones. URS for ureteral stones.' },
+        { label: '>20 mm', risk: 'PCNL', riskCol: 'cr-red', desc: 'PCNL is first-line. Multisession or combination therapy may be needed for staghorn calculi.' },
+      ]},
+      { title: 'Location-Based Considerations', items: [
+        { label: 'Distal ureter (VUJ)', risk: 'Highest passage', riskCol: 'cr-green', desc: 'Highest spontaneous passage rate. MET most effective here. SWL and URS both effective if intervention needed.' },
+        { label: 'Lower pole renal', risk: 'SWL less effective', riskCol: 'cr-yellow', desc: 'Gravity impairs fragment clearance after SWL. URS or PCNL preferred for stones >10 mm in lower pole.' },
+        { label: 'UPJ / renal pelvis', risk: 'SWL effective', riskCol: 'cr-yellow', desc: 'SWL is effective for stones in upper ureter and renal pelvis. URS or PCNL for SWL failure.' },
+      ]},
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════ LIVER / BILIARY ═════
+
+  liver_lesion_noncirrhotic: {
+    name: 'Incidental Liver Lesion — Non-Cirrhotic Patient',
+    source: 'ACR 2017 Incidental Findings / EASL 2018',
+    desc: 'Characterisation and follow-up of incidental hepatic lesion in a patient without cirrhosis or known malignancy',
+    fields: [
+      numField('size', 'Lesion Size', 'mm', 'e.g. 25'),
+      selectField('morphology', 'Most Likely Morphology (based on imaging)', [
+        { value: 'simple_cyst',    label: 'Simple cyst — anechoic/hypodense, no wall, no septae, posterior acoustic enhancement' },
+        { value: 'haemangioma',    label: 'Haemangioma — peripheral nodular enhancement with centripetal fill-in, T2 bright' },
+        { value: 'fnh',            label: 'FNH — central scar, spoke-wheel arterial enhancement, hepatobiliary phase uptake (Gd-EOB)' },
+        { value: 'adenoma',        label: 'Hepatic adenoma — arterial enhancement, may contain fat/haemorrhage' },
+        { value: 'metastasis',     label: 'Metastasis — multiple lesions, rim-enhancing, or target sign, known primary' },
+        { value: 'indeterminate',  label: 'Indeterminate — does not fit above patterns' },
+      ]),
+      radioField('known_malignancy', 'Known Primary Malignancy?', [
+        { value: 'no',  label: 'No' },
+        { value: 'yes', label: 'Yes' },
+      ]),
+      radioField('oca', 'Oral Contraceptive Pill use (for adenoma assessment)?', [
+        { value: 'no',       label: 'No / not applicable' },
+        { value: 'yes',      label: 'Yes — current or recent OCP use' },
+      ]),
+    ],
+    compute(f) {
+      const sz  = parseFloat(f.size);
+      if (isNaN(sz) || sz <= 0) return null;
+      const mal = f.known_malignancy === 'yes';
+      const ocp = f.oca === 'yes';
+      const notes = [
+        'MRI with hepatobiliary contrast (Gd-EOB-DTPA) is the gold standard for liver lesion characterisation.',
+        'If cirrhosis is suspected, use LI-RADS criteria instead.',
+        'All indeterminate lesions in patients with known malignancy should be reported as "indeterminate — exclude metastasis".',
+        'Hepatic adenoma may rupture or undergo malignant transformation — surgical review for lesions >5 cm.',
+      ];
+      if (mal) {
+        return result('orange',
+          'Known malignancy — any liver lesion requires characterisation to exclude metastasis. If CT/US indeterminate: MRI liver with hepatobiliary contrast (Gd-EOB). PET-CT may be appropriate for staging.',
+          notes);
+      }
+      const morph = f.morphology;
+      if (morph === 'simple_cyst') {
+        if (sz < 20) return result('green', 'Simple cyst ' + sz + ' mm — classic features, no follow-up required. Benign.', notes);
+        return result('green', 'Large simple cyst ' + sz + ' mm — no follow-up if completely typical features. Consider US or MRI to confirm if any atypical feature.', notes);
+      }
+      if (morph === 'haemangioma') {
+        if (sz < 30) return result('green', 'Haemangioma ' + sz + ' mm — classic features. No follow-up required. Benign.', notes);
+        return result('yellow', 'Large haemangioma ' + sz + ' mm — confirm with MRI if not already done. Once confirmed, no further follow-up needed.', notes);
+      }
+      if (morph === 'fnh') {
+        return result('green', 'FNH — no malignant potential. No treatment or follow-up required. Reassure patient. Confirm with MRI (Gd-EOB) if CT findings atypical.', notes);
+      }
+      if (morph === 'adenoma') {
+        const notes2 = [...notes, 'Hepatocyte Nuclear Factor 1-alpha (HNF1A) mutated adenomas: steatotic, low malignant potential. Beta-catenin mutated: higher malignant risk. Inflammatory: OCP-associated.'];
+        if (sz >= 50) return result('red', 'Hepatic adenoma \u226550 mm (' + sz + ' mm) — surgical resection recommended due to risk of rupture and malignant transformation. Hepatobiliary surgery referral.' + (ocp ? ' Discontinue OCP.' : ''), notes2);
+        if (ocp) return result('orange', 'Hepatic adenoma ' + sz + ' mm — OCP-associated. Discontinue OCP. MRI in 6 months; if regression to <30 mm, surveillance. If no regression or growth, surgical referral.', notes2);
+        return result('orange', 'Hepatic adenoma ' + sz + ' mm — hepatobiliary surgery referral for risk stratification. MRI to characterise subtype. ' + (sz >= 30 ? 'Consider resection.' : 'Surveillance MRI at 6 months.'), notes2);
+      }
+      if (morph === 'metastasis') {
+        return result('red', 'Imaging features suggest metastasis. Urgent referral to primary team / oncology. Staging CT chest/abdomen/pelvis. Tissue confirmation if primary unknown.', notes);
+      }
+      // Indeterminate
+      return result('orange',
+        'Indeterminate liver lesion ' + sz + ' mm — further characterisation required. MRI with hepatobiliary contrast (Gd-EOB-DTPA) recommended. Hepatobiliary radiology review.',
+        [...notes, sz < 10 ? 'Lesions <10 mm: if all imaging features are benign (cyst or haemangioma-like) on 2 modalities, no follow-up needed per ACR.' : 'Lesions \u226510 mm: MRI characterisation required if CT indeterminate.']);
+    },
+    criteria: [
+      { title: 'Lesion Characterisation', items: [
+        { label: 'Simple hepatic cyst', risk: 'Benign', riskCol: 'cr-green', desc: 'Anechoic on US, hypodense on CT (<0 HU). No wall, septae, nodularity, or enhancement. Posterior acoustic enhancement on US. No follow-up needed.' },
+        { label: 'Haemangioma', risk: 'Benign', riskCol: 'cr-green', desc: 'Peripheral nodular enhancement with centripetal fill-in on CT/MRI. T2-hyperintense (light bulb sign) on MRI. Most common benign hepatic tumour. No follow-up once confirmed.' },
+        { label: 'FNH', risk: 'Benign', riskCol: 'cr-green', desc: 'Central scar with spoke-wheel arterial enhancement. Isointense or hyperintense on hepatobiliary phase (Gd-EOB). No malignant potential. No OCP contraindication.' },
+        { label: 'Hepatic adenoma', risk: 'Monitor', riskCol: 'cr-orange', desc: 'Arterial enhancement, may contain fat (HNF1A type) or haemorrhage. Risk of rupture (>5 cm) and malignant transformation (beta-catenin type). OCP cessation and size-based management.' },
+        { label: 'Metastasis', risk: 'Urgent', riskCol: 'cr-red', desc: 'Often multiple. Rim/peripheral enhancement or target sign. Central necrosis. Known primary is key. Requires oncological staging.' },
+      ]},
+    ],
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  hepatic_steatosis: {
+    name: 'Hepatic Steatosis — CT-based Grading',
+    source: 'ACR / AASLD / EASL Guidelines',
+    desc: 'Unenhanced CT assessment of hepatic steatosis using liver attenuation values',
+    fields: [
+      numField('liver_hu', 'Liver Attenuation', 'HU', 'e.g. 38', 'Measure ROI in right lobe, away from vessels, on unenhanced CT'),
+      numField('spleen_hu', 'Spleen Attenuation', 'HU', 'e.g. 55', 'Optional: ROI in spleen on same series for liver-spleen ratio'),
+      radioField('contrast', 'CT Type', [
+        { value: 'noncontrast', label: 'Non-contrast CT (preferred for steatosis assessment)' },
+        { value: 'contrast',    label: 'Contrast-enhanced CT (less reliable — use with caution)' },
+      ]),
+    ],
+    compute(f) {
+      const liverHU  = parseFloat(f.liver_hu);
+      const spleenHU = parseFloat(f.spleen_hu);
+      if (isNaN(liverHU)) return null;
+      const isContrast = f.contrast === 'contrast';
+      const notes = [
+        'Unenhanced CT is preferred. Contrast enhancement reduces liver attenuation by ~20–30 HU, making thresholds unreliable on post-contrast imaging.',
+        'Normal liver attenuation: 50–70 HU on unenhanced CT.',
+        'Liver-spleen attenuation difference <-10 HU (liver lower than spleen by >10 HU) indicates significant steatosis.',
+        'CT underestimates steatosis <25–30% fat fraction. MRI PDFF is more sensitive.',
+        'Iron overload increases liver attenuation (hepatic siderosis): liver HU >75 HU suggests iron deposition.',
+        'Steatohepatitis (NASH) cannot be diagnosed on CT — liver biopsy or MR elastography required.',
+      ];
+      const caveats = isContrast ? ['Contrast-enhanced CT: these thresholds are approximate; attenuation values are reduced by contrast. Non-contrast CT strongly preferred.'] : [];
+
+      let diff = null;
+      let ratio = null;
+      let spleenNote = '';
+      if (!isNaN(spleenHU) && spleenHU > 0) {
+        diff  = liverHU - spleenHU;
+        ratio = (liverHU / spleenHU).toFixed(2);
+        spleenNote = ' Liver\u2013spleen difference: ' + diff.toFixed(0) + ' HU (ratio: ' + ratio + ').';
+      }
+
+      let col, rec, grade;
+      if (liverHU >= 50) {
+        col   = 'green';
+        grade = 'Normal';
+        rec   = 'Liver attenuation ' + liverHU + ' HU — normal.' + spleenNote + ' No significant hepatic steatosis on CT.';
+      } else if (liverHU >= 40) {
+        col   = 'yellow';
+        grade = 'Mild steatosis';
+        rec   = 'Liver attenuation ' + liverHU + ' HU — mild hepatic steatosis.' + spleenNote + ' Lifestyle modification: weight loss, reduce alcohol, treat metabolic risk factors. Gastroenterology/hepatology referral if clinically indicated.';
+      } else if (liverHU >= 20) {
+        col   = 'orange';
+        grade = 'Moderate steatosis';
+        rec   = 'Liver attenuation ' + liverHU + ' HU — moderate hepatic steatosis.' + spleenNote + ' Hepatology referral for assessment of NAFLD/NASH. Liver function tests, metabolic panel. Consider FibroScan or MR elastography.';
+      } else {
+        col   = 'red';
+        grade = 'Severe steatosis';
+        rec   = 'Liver attenuation ' + liverHU + ' HU — severe hepatic steatosis.' + spleenNote + ' Urgent hepatology referral. Screen for NASH and advanced fibrosis (FibroScan, liver biopsy). Avoid hepatotoxic medications.';
+      }
+
+      if (!isNaN(spleenHU) && diff !== null && diff < -10 && col === 'green') {
+        col = 'yellow';
+        rec = 'Liver attenuation ' + liverHU + ' HU — borderline by absolute value, but liver-spleen difference (' + diff.toFixed(0) + ' HU) indicates steatosis. Mild-moderate steatosis likely.';
+      }
+
+      const extra = '<div class="sub-result"><div class="sub-result-title">Calculation</div>' +
+        '<table style="width:100%;font-size:.84rem;border-collapse:collapse">' +
+        '<tr><td style="padding:3px 12px 3px 0;width:50%"><strong>Liver attenuation</strong></td><td><strong>' + liverHU + ' HU</strong></td></tr>' +
+        (!isNaN(spleenHU) ? '<tr><td style="padding:3px 12px 3px 0"><strong>Spleen attenuation</strong></td><td>' + spleenHU + ' HU</td></tr>' +
+          '<tr><td style="padding:3px 12px 3px 0"><strong>Liver \u2212 Spleen</strong></td><td><strong>' + diff.toFixed(0) + ' HU</strong></td></tr>' +
+          '<tr><td style="padding:3px 12px 3px 0"><strong>Liver:Spleen ratio</strong></td><td>' + ratio + '</td></tr>' : '') +
+        '<tr><td style="padding:3px 12px 3px 0"><strong>Grade</strong></td><td><strong>' + grade + '</strong></td></tr>' +
+        '</table></div>';
+
+      return result(col, rec, [...notes, ...caveats], extra);
+    },
+    criteria: [
+      { title: 'Liver HU Thresholds (Unenhanced CT)', items: [
+        { label: '\u226550 HU — Normal', risk: 'Normal', riskCol: 'cr-green', desc: 'Normal hepatic attenuation. No significant steatosis. Normal range 50–70 HU.' },
+        { label: '40–49 HU — Mild steatosis', risk: 'Mild', riskCol: 'cr-yellow', desc: 'Mild hepatic steatosis (~5–15% fat fraction). Lifestyle counselling: weight loss, alcohol reduction, dietary modification.' },
+        { label: '20–39 HU — Moderate steatosis', risk: 'Moderate', riskCol: 'cr-orange', desc: 'Moderate steatosis (~15–30% fat fraction). Hepatology referral. Assess for NASH, metabolic syndrome, and fibrosis.' },
+        { label: '<20 HU — Severe steatosis', risk: 'Severe', riskCol: 'cr-red', desc: 'Severe steatosis (>30% fat fraction). May approach or exceed fat attenuation. Urgent hepatology referral. Risk of NASH and cirrhosis.' },
+      ]},
+      { title: 'Liver-Spleen Ratio', items: [
+        { label: 'Difference > \u22120 HU (liver > spleen)', risk: 'Normal', riskCol: 'cr-green', desc: 'Normal liver is denser than spleen. No steatosis.' },
+        { label: 'Difference \u22120 to \u221210 HU', risk: 'Borderline', riskCol: 'cr-yellow', desc: 'Liver approaches spleen attenuation. Borderline steatosis. CT PDFF or MRI for confirmation.' },
+        { label: 'Difference < \u221210 HU (liver < spleen)', risk: 'Steatosis', riskCol: 'cr-orange', desc: 'Liver is >10 HU less dense than spleen. Reliable indicator of hepatic steatosis regardless of absolute liver HU.' },
+      ]},
+    ],
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  cbd_dilation: {
+    name: 'Bile Duct Dilation — Significance & Workup',
+    source: 'ACR / BSG / EASL Guidelines',
+    desc: 'Assessment of common bile duct and intrahepatic duct dilation',
+    fields: [
+      numField('cbd', 'Common Bile Duct Diameter', 'mm', 'e.g. 9', 'Measured on US, CT or MRI at widest point'),
+      radioField('cholecystectomy', 'Prior Cholecystectomy?', [
+        { value: 'no',  label: 'No (gallbladder in situ)' },
+        { value: 'yes', label: 'Yes (post-cholecystectomy — CBD may be physiologically enlarged)' },
+      ]),
+      radioField('ihd', 'Intrahepatic Duct (IHD) Dilation?', [
+        { value: 'no',  label: 'No intrahepatic dilation' },
+        { value: 'yes', label: 'Yes — intrahepatic ducts dilated' },
+      ]),
+      radioField('cause', 'Likely Cause (if identifiable)', [
+        { value: 'unknown',      label: 'Unknown / indeterminate' },
+        { value: 'stone',        label: 'Choledocholithiasis — stone visible in duct' },
+        { value: 'stricture',    label: 'Biliary stricture' },
+        { value: 'double_duct',  label: 'Double duct sign (CBD + MPD both dilated)' },
+        { value: 'mass',         label: 'Mass / cholangiocarcinoma suspected' },
+        { value: 'physiological', label: 'Physiological / post-cholecystectomy' },
+      ]),
+      radioField('jaundice', 'Clinical Jaundice / Raised Bilirubin?', [
+        { value: 'no',  label: 'No' },
+        { value: 'yes', label: 'Yes' },
+      ]),
+    ],
+    compute(f) {
+      const cbd      = parseFloat(f.cbd);
+      if (isNaN(cbd) || cbd <= 0) return null;
+      const postchole = f.cholecystectomy === 'yes';
+      const ihd       = f.ihd === 'yes';
+      const cause     = f.cause;
+      const jaundice  = f.jaundice === 'yes';
+      const normalMax  = postchole ? 10 : 7;
+      const notes = [
+        'Normal CBD: \u22647 mm (gallbladder in situ); \u226410 mm post-cholecystectomy.',
+        'MRCP is the gold standard for non-invasive evaluation of biliary anatomy.',
+        'EUS (endoscopic ultrasound) is highly sensitive for choledocholithiasis.',
+        'ERCP is reserved for therapeutic intervention (sphincterotomy, stenting, stone extraction).',
+        'Double duct sign (CBD + pancreatic duct dilation) raises concern for periampullary/pancreatic head malignancy.',
+      ];
+      if (cause === 'double_duct') {
+        return result('red',
+          'Double duct sign — dilation of both CBD and main pancreatic duct. High suspicion for periampullary or pancreatic head malignancy. Urgent pancreatic protocol CT, CA 19-9, CEA, MRI/MRCP. Gastroenterology/hepatobiliary surgery referral.',
+          notes);
+      }
+      if (cause === 'mass') {
+        return result('red',
+          'Biliary obstruction with mass/stricture — cholangiocarcinoma or extrinsic compression. Urgent MRCP + CT staging + CA 19-9. Hepatobiliary surgery referral.',
+          notes);
+      }
+      if (jaundice && cbd > normalMax) {
+        return result('red',
+          'Jaundice with CBD dilation (' + cbd + ' mm, normal \u2264' + normalMax + ' mm) — obstructive jaundice. Urgent MRCP. Liver function tests, bilirubin, CA 19-9. Hepatobiliary referral. Consider ERCP if stone suspected.',
+          notes);
+      }
+      if (cbd <= normalMax) {
+        return result('green',
+          'CBD diameter ' + cbd + ' mm — within normal limits for ' + (postchole ? 'post-cholecystectomy patient' : 'intact gallbladder') + ' (\u2264' + normalMax + ' mm). No significant biliary dilation.',
+          notes);
+      }
+      if (cause === 'stone') {
+        return result('orange',
+          'CBD ' + cbd + ' mm with visible choledocholithiasis — biliary stone obstruction. MRCP for full mapping. ERCP with sphincterotomy and stone extraction. Hepatobiliary surgery or gastroenterology referral.',
+          notes);
+      }
+      if (cause === 'physiological' && postchole && !ihd) {
+        return result('yellow',
+          'CBD ' + cbd + ' mm post-cholecystectomy — marginally above expected but may be physiological compensatory dilation. MRCP if symptomatic or >10 mm. Monitor LFTs.',
+          notes);
+      }
+      const ihd_note = ihd ? ' Intrahepatic duct dilation present — higher obstruction level.' : '';
+      if (cbd <= 10) {
+        return result('yellow',
+          'Mild CBD dilation ' + cbd + ' mm.' + ihd_note + ' MRCP recommended for aetiology. LFTs, bilirubin. Gastroenterology review.',
+          notes);
+      }
+      return result('orange',
+        'Significant CBD dilation ' + cbd + ' mm.' + ihd_note + ' MRCP urgently. Exclude choledocholithiasis, cholangiocarcinoma, extrinsic compression. Hepatobiliary surgery referral.',
+        notes);
+    },
+    criteria: [
+      { title: 'Normal CBD Diameter', items: [
+        { label: '\u22647 mm — Gallbladder in situ', risk: 'Normal', riskCol: 'cr-green', desc: 'Normal upper limit with gallbladder present. Age-related increase of ~1 mm per decade may apply, but clinical correlation is required.' },
+        { label: '\u226410 mm — Post-cholecystectomy', risk: 'Normal', riskCol: 'cr-green', desc: 'Physiological compensatory dilation after cholecystectomy. Up to 10 mm considered normal if no symptoms or LFT abnormality.' },
+        { label: '7–10 mm (intact GB)', risk: 'Abnormal', riskCol: 'cr-orange', desc: 'Mild dilation above normal. MRCP recommended to exclude choledocholithiasis or stricture.' },
+        { label: '>10 mm (any)', risk: 'Significant', riskCol: 'cr-red', desc: 'Definite significant dilation. Biliary obstruction until proven otherwise. MRCP + LFTs essential.' },
+      ]},
+      { title: 'Double Duct Sign', items: [
+        { label: 'CBD + MPD both dilated', risk: 'Urgent', riskCol: 'cr-red', desc: 'The double duct sign (dilated CBD and pancreatic duct) is associated with periampullary or pancreatic head malignancy in 65–80% of cases. Pancreatic protocol CT and MRCP urgently required.' },
+      ]},
+    ],
+  },
+
+  // ════════════════════════════════════════════════════════ NEURO / STROKE ══════
+
+  aspects: {
+    name: 'ASPECTS — Alberta Stroke Programme Early CT Score',
+    source: 'Barber et al. 2000 / DAWN / DEFUSE-3 Criteria',
+    desc: '10-point CT score for early ischaemic change in MCA territory — guides thrombolysis and thrombectomy eligibility',
+    fields: [
+      sectionField('MCA Territory Regions — select ALL regions with early ischaemic change (hypoattenuation, sulcal effacement, loss of grey-white differentiation)'),
+      checkboxField('regions_subcortical', 'Subcortical Structures (each = 1 point deducted)', [
+        { value: 'C',  label: 'C — Caudate nucleus' },
+        { value: 'L',  label: 'L — Lentiform nucleus (putamen + globus pallidus)' },
+        { value: 'IC', label: 'IC — Internal capsule' },
+        { value: 'I',  label: 'I — Insular cortex (insular ribbon sign)' },
+      ]),
+      checkboxField('regions_cortical', 'MCA Cortical Regions (each = 1 point deducted)', [
+        { value: 'M1', label: 'M1 — Anterior MCA cortex (frontal operculum)' },
+        { value: 'M2', label: 'M2 — MCA cortex lateral to insular ribbon (anterior temporal)' },
+        { value: 'M3', label: 'M3 — Posterior MCA cortex (posterior temporal)' },
+        { value: 'M4', label: 'M4 — Anterior MCA territory superior to M1' },
+        { value: 'M5', label: 'M5 — Lateral MCA territory superior to M2' },
+        { value: 'M6', label: 'M6 — Posterior MCA territory superior to M3' },
+      ]),
+    ],
+    compute(f) {
+      const subReg = Array.isArray(f.regions_subcortical) ? f.regions_subcortical : (f.regions_subcortical ? [f.regions_subcortical] : []);
+      const corReg = Array.isArray(f.regions_cortical)   ? f.regions_cortical   : (f.regions_cortical   ? [f.regions_cortical]   : []);
+      const involved = subReg.length + corReg.length;
+      const score    = 10 - involved;
+      const notes = [
+        'ASPECTS is scored on non-contrast CT: deduct 1 point for each region with early ischaemic change.',
+        'Early ischaemic change: focal hypoattenuation, loss of grey-white differentiation, sulcal effacement.',
+        'ASPECTS \u22656 is the conventional threshold for IV thrombolysis and mechanical thrombectomy eligibility.',
+        'DAWN and DEFUSE-3 trials used ASPECTS \u22656 for extended-window thrombectomy (6-24h).',
+        'CT perfusion (CTP) adds mismatch volume information and may guide eligibility beyond ASPECTS alone.',
+        'MR DWI is more sensitive for early ischaemia than CT, especially in small or posterior fossa strokes.',
+      ];
+      let col, rec;
+      const regionStr = involved === 0 ? 'No involved regions' : [...subReg, ...corReg].join(', ');
+      if (score >= 8) {
+        col = 'green';
+        rec = 'ASPECTS ' + score + '/10 (' + (involved === 0 ? 'no ischaemic change' : 'minimal involvement: ' + regionStr) + '). Excellent score — favours IV thrombolysis and/or mechanical thrombectomy. Good functional outcome expected.';
+      } else if (score >= 6) {
+        col = 'yellow';
+        rec = 'ASPECTS ' + score + '/10 (involved: ' + regionStr + '). Acceptable score — within conventional threshold (\u22656) for IV alteplase and mechanical thrombectomy. Multidisciplinary stroke team decision.';
+      } else if (score >= 4) {
+        col = 'orange';
+        rec = 'ASPECTS ' + score + '/10 (involved: ' + regionStr + '). Low score — below standard thrombectomy threshold. Evidence for benefit is limited. Case-by-case decision by stroke team. CT perfusion mismatch may still support intervention.';
+      } else {
+        col = 'red';
+        rec = 'ASPECTS ' + score + '/10 (involved: ' + regionStr + '). Very low score — extensive MCA territory ischaemia. Reperfusion therapy unlikely to benefit; risk of haemorrhagic transformation. Comfort care and best medical management. Stroke team and palliative care consultation.';
+      }
+      const extra = '<div class="sub-result"><div class="sub-result-title">Score</div>' +
+        '<span style="font-size:1.4rem;font-weight:700">' + score + '</span><span style="font-size:.9rem"> / 10</span>' +
+        ' &nbsp;|&nbsp; Regions involved: ' + involved + ' (' + (involved === 0 ? 'none' : regionStr) + ')</div>';
+      return result(col, rec, notes, extra);
+    },
+    criteria: [
+      { title: 'ASPECTS Regions (10 total)', items: [
+        { label: 'C — Caudate', risk: 'Subcortical', riskCol: 'cr-grey', desc: 'Head of caudate nucleus. Lenticulostriate territory.' },
+        { label: 'L — Lentiform nucleus', risk: 'Subcortical', riskCol: 'cr-grey', desc: 'Putamen and globus pallidus. Lenticulostriate territory.' },
+        { label: 'IC — Internal capsule', risk: 'Subcortical', riskCol: 'cr-grey', desc: 'Posterior limb of internal capsule, between caudate and lentiform.' },
+        { label: 'I — Insular cortex', risk: 'Cortical', riskCol: 'cr-grey', desc: 'Insular ribbon. Loss of insular grey-white differentiation (insular ribbon sign) is one of the earliest CT signs of MCA ischaemia.' },
+        { label: 'M1–M3 — Basal cortex', risk: 'Cortical', riskCol: 'cr-grey', desc: 'M1: anterior frontal; M2: lateral to insula; M3: posterior temporal. Assessed at basal ganglia level.' },
+        { label: 'M4–M6 — Suprabasal cortex', risk: 'Cortical', riskCol: 'cr-grey', desc: 'M4: above M1; M5: above M2; M6: above M3. Assessed at level above basal ganglia.' },
+      ]},
+      { title: 'Score Thresholds', items: [
+        { label: 'ASPECTS 8–10', risk: 'Excellent', riskCol: 'cr-green', desc: 'Minimal ischaemic change. Strong evidence for reperfusion therapy benefit. Best functional outcomes.' },
+        { label: 'ASPECTS 6–7', risk: 'Acceptable', riskCol: 'cr-yellow', desc: 'Conventional threshold for IV thrombolysis and mechanical thrombectomy. Moderate functional outcomes expected.' },
+        { label: 'ASPECTS 4–5', risk: 'Marginal', riskCol: 'cr-orange', desc: 'Below standard threshold. Thrombectomy may be considered with CT perfusion mismatch guidance (DAWN/DEFUSE-3). Case-by-case.' },
+        { label: 'ASPECTS 0–3', risk: 'Poor prognosis', riskCol: 'cr-red', desc: 'Near-complete MCA infarction. Reperfusion therapy risk (haemorrhagic transformation) likely outweighs benefit. Palliative/comfort care discussion.' },
+      ]},
+    ],
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  ich_score: {
+    name: 'ICH Score — Intracerebral Haemorrhage Severity',
+    source: 'Hemphill et al. 2001 / AHA/ASA 2022',
+    desc: '30-day mortality prediction for spontaneous intracerebral haemorrhage',
+    fields: [
+      selectField('gcs', 'GCS Score at Presentation', [
+        { value: '0', label: 'GCS 13–15 — 0 points' },
+        { value: '1', label: 'GCS 5–12 — 1 point' },
+        { value: '2', label: 'GCS 3–4 — 2 points' },
+      ]),
+      numField('volume', 'ICH Volume', 'mL', 'e.g. 25', 'Use ABC/2 method: A \xd7 B \xd7 C \xf7 2 (cm dimensions from CT)'),
+      radioField('ivh', 'Intraventricular Haemorrhage (IVH)?', [
+        { value: 'no',  label: 'No IVH' },
+        { value: 'yes', label: 'Yes — blood in ventricles (1 point)' },
+      ]),
+      radioField('location', 'ICH Location', [
+        { value: 'supratentorial', label: 'Supratentorial (cortex, basal ganglia, thalamus) — 0 points' },
+        { value: 'infratentorial', label: 'Infratentorial (brainstem or cerebellum) — 1 point' },
+      ]),
+      radioField('age', 'Patient Age', [
+        { value: 'under80', label: 'Age <80 years — 0 points' },
+        { value: 'over80',  label: 'Age \u226580 years — 1 point' },
+      ]),
+    ],
+    compute(f) {
+      const gcsPoints  = parseInt(f.gcs) || 0;
+      const volRaw     = parseFloat(f.volume);
+      const vol        = isNaN(volRaw) ? null : volRaw;
+      const volPoints  = vol !== null ? (vol >= 30 ? 1 : 0) : 0;
+      const ivhPoints  = f.ivh === 'yes' ? 1 : 0;
+      const locPoints  = f.location === 'infratentorial' ? 1 : 0;
+      const agePoints  = f.age === 'over80' ? 1 : 0;
+      const total      = gcsPoints + volPoints + ivhPoints + locPoints + agePoints;
+
+      const mortality = { 0: 0, 1: 13, 2: 26, 3: 72, 4: 97, 5: 100, 6: 100 };
+      const mort = mortality[Math.min(total, 6)];
+
+      const notes = [
+        'ICH volume (ABC/2): A = max diameter (cm), B = perpendicular diameter (cm), C = slices with haemorrhage \xd7 slice thickness (cm). Divide by 2.',
+        'ICH score does not determine futility — it should not be used in isolation to withdraw care.',
+        'Early do-not-resuscitate orders have been shown to worsen outcomes (self-fulfilling prophecy).',
+        'Aggressive care in the first 24 hours improves outcomes even in high-score patients.',
+        'Haematoma expansion (>33% growth or >6 mL absolute growth) occurs in ~30% within 24h.',
+        'Blood pressure management: target SBP <140 mmHg (AHA/ASA 2022) if presenting SBP 150–220 mmHg.',
+      ];
+
+      let col;
+      if (mort === 0)       col = 'green';
+      else if (mort <= 26)  col = 'yellow';
+      else if (mort <= 72)  col = 'orange';
+      else                  col = 'red';
+
+      const breakdown = 'GCS (' + gcsPoints + ') + Volume ' + (vol !== null ? vol + ' mL' : '?') + ' (' + volPoints + ') + IVH (' + ivhPoints + ') + Location (' + locPoints + ') + Age (' + agePoints + ')';
+
+      const extra = '<div class="sub-result"><div class="sub-result-title">Score</div>' +
+        '<span style="font-size:1.4rem;font-weight:700">' + total + '</span><span style="font-size:.9rem"> / 6</span>' +
+        ' &nbsp;|&nbsp; Predicted 30-day mortality: <strong>' + mort + '%</strong>' +
+        '<div style="font-size:.75rem;color:#5c7a96;margin-top:4px">' + breakdown + '</div></div>';
+
+      return result(col, 'ICH Score ' + total + '/6 — predicted 30-day mortality: ' + mort + '%. ' +
+        (mort <= 13 ? 'Low mortality. Full resuscitative care. Neurosurgery/neurology referral. Blood pressure management, reversal of anticoagulation.' :
+         mort <= 26 ? 'Intermediate mortality. Full resuscitative care with neurosurgical evaluation. Surgical evacuation rarely indicated for spontaneous ICH but consider if cerebellar haemorrhage \u226530 mL or brainstem compression.' :
+         mort <= 72 ? 'High mortality. Goals-of-care discussion with family essential. Neurology/neurosurgical evaluation. Individualised care plan.' :
+         'Very high mortality. Early, thorough goals-of-care discussion. Aggressive early care for 24–48 hours before reassessment is recommended (avoid premature DNAR).'),
+        notes, extra);
+    },
+    criteria: [
+      { title: 'ICH Score Components', items: [
+        { label: 'GCS 13–15: 0pt | 5–12: 1pt | 3–4: 2pts', risk: 'GCS', riskCol: 'cr-grey', desc: 'Glasgow Coma Scale at presentation. GCS is the highest-weighted predictor of 30-day mortality in spontaneous ICH.' },
+        { label: 'Volume \u226530 mL: 1pt | <30 mL: 0pt', risk: 'Volume', riskCol: 'cr-grey', desc: 'ICH volume calculated using ABC/2 method from CT. Volume \u226530 mL is associated with higher mortality and haematoma expansion risk.' },
+        { label: 'IVH: 1pt | No IVH: 0pt', risk: 'IVH', riskCol: 'cr-grey', desc: 'Intraventricular haemorrhage worsens prognosis by causing obstructive hydrocephalus and brainstem compression.' },
+        { label: 'Infratentorial: 1pt | Supratentorial: 0pt', risk: 'Location', riskCol: 'cr-grey', desc: 'Infratentorial (brainstem, cerebellum) haemorrhages are associated with higher mortality due to proximity to vital structures.' },
+        { label: 'Age \u226580: 1pt | <80: 0pt', risk: 'Age', riskCol: 'cr-grey', desc: 'Older age independently predicts higher mortality after ICH.' },
+      ]},
+      { title: '30-day Mortality by Score', items: [
+        { label: 'Score 0 — 0%', risk: 'Very Low', riskCol: 'cr-green', desc: 'No deaths in original validation cohort. Full resuscitative care recommended.' },
+        { label: 'Score 1 — 13%', risk: 'Low', riskCol: 'cr-green', desc: '13% 30-day mortality. Aggressive management appropriate.' },
+        { label: 'Score 2 — 26%', risk: 'Moderate', riskCol: 'cr-yellow', desc: 'Goals-of-care discussion advised while continuing full care.' },
+        { label: 'Score 3 — 72%', risk: 'High', riskCol: 'cr-orange', desc: 'High mortality. Early goals-of-care discussion. Avoid premature DNAR.' },
+        { label: 'Score 4–6 — 97–100%', risk: 'Very High', riskCol: 'cr-red', desc: 'Near-universal mortality in validation cohort. ICH score should not be used in isolation for withdrawal decisions. Aggressive care for 24–48h before reassessment.' },
       ]},
     ],
   },
