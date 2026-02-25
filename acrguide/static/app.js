@@ -776,7 +776,7 @@ const GUIDELINES = {
       const zone = pz ? 'peripheral zone' : 'transition zone';
       const notes = [
         'PI-RADS v2.1 applies to multiparametric MRI (T2WI + DWI + DCE).',
-        'PSAD >0.15 ng/mL/cc increases risk of clinically significant PCa; may prompt biopsy even at PI-RADS 3.',
+        'PSAD >0.15 ng/mL/g increases risk of clinically significant PCa; may prompt biopsy even at PI-RADS 3.',
         'Equivocal PI-RADS 3 lesions in the PZ with positive DCE should be upgraded to PI-RADS 4.',
       ];
 
@@ -820,26 +820,26 @@ const GUIDELINES = {
       if (psadRaw >= 0.20) {
         colour = 'red';
         label  = 'High';
-        interp = 'PSAD ≥20.20 ng/mL/cc — high risk of clinically significant PCa. Biopsy strongly recommended regardless of PI-RADS score.';
+        interp = 'PSAD ≥20.20 ng/mL/g — high risk of clinically significant PCa. Biopsy strongly recommended regardless of PI-RADS score.';
       } else if (psadRaw >= 0.15) {
         colour = 'orange';
         label  = 'Elevated';
-        interp = 'PSAD 0.15–0.20 ng/mL/cc — elevated risk. Supports biopsy at PI-RADS 3 and above.';
+        interp = 'PSAD 0.15–0.20 ng/mL/g — elevated risk. Supports biopsy at PI-RADS 3 and above.';
       } else if (psadRaw >= 0.10) {
         colour = 'yellow';
         label  = 'Borderline';
-        interp = 'PSAD 0.10–0.15 ng/mL/cc — borderline. Use in conjunction with PI-RADS score and clinical context.';
+        interp = 'PSAD 0.10–0.15 ng/mL/g — borderline. Use in conjunction with PI-RADS score and clinical context.';
       } else {
         colour = 'green';
         label  = 'Normal';
-        interp = 'PSAD <0.10 ng/mL/cc — low risk. Active surveillance may be appropriate for PI-RADS 3 lesions.';
+        interp = 'PSAD <0.10 ng/mL/g — low risk. Active surveillance may be appropriate for PI-RADS 3 lesions.';
       }
 
       const psadCol = colour === 'red' ? '#c0392b' : colour === 'orange' ? '#e67e22' : colour === 'yellow' ? '#b8860b' : '#27ae60';
 
       const notes = [
         'Ellipsoid formula: Volume = Length × Width × Height × 0.52.',
-        'PSAD = PSA / prostate volume (ng/mL/cc = ng/mL/mL).',
+        'PSAD = PSA / prostate volume (ng/mL/g).',
         'PSAD ≥0.15 is the widely used threshold to support biopsy in equivocal (PI-RADS 3) lesions.',
         'Transition zone PSAD (PSAD-TZ) may be more specific but requires separate TZ volume measurement.',
       ];
@@ -858,25 +858,25 @@ const GUIDELINES = {
           </tr>
           <tr>
             <td style="padding:3px 12px 3px 0"><strong>PSA density</strong></td>
-            <td><strong style="color:${psadCol}">${psad} ng/mL/cc</strong></td>
+            <td><strong style="color:${psadCol}">${psad} ng/mL/g</strong></td>
             <td style="font-size:.77rem;color:${psadCol};padding-left:8px">${label}</td>
           </tr>
         </table>
       </div>`;
 
-      const copyString = `The prostate measures ${pw} x ${pl} x ${ph} cm in right-to-left, anterior-posterior and craniocaudal dimension. Prostate weight is estimated at ${vol} g. PSA density is ${psad} ng/mL.`;
+      const copyString = `The prostate measures ${pw} x ${pl} x ${ph} cm in right-to-left, anterior-posterior and craniocaudal dimension. Prostate weight is estimated at ${vol} g. PSA density is ${psad} ng/mL/g.`;
 
       return result(colour, interp, notes, extraHtml, copyString);
     },
     criteria: [
       { title: 'PSAD Thresholds', items: [
-        { label: 'Normal — <0.10 ng/mL/cc', risk: 'Low', riskCol: 'cr-green',
+        { label: 'Normal — <0.10 ng/mL/g', risk: 'Low', riskCol: 'cr-green',
           desc: 'Low probability of clinically significant PCa. For PI-RADS 3 lesions, active surveillance may be appropriate. No biopsy threshold met on density alone.' },
-        { label: 'Borderline — 0.10–0.15 ng/mL/cc', risk: 'Borderline', riskCol: 'cr-yellow',
+        { label: 'Borderline — 0.10–0.15 ng/mL/g', risk: 'Borderline', riskCol: 'cr-yellow',
           desc: 'Intermediate range. Clinical decision should incorporate PI-RADS score, age, family history, and prior biopsy results. Shared decision-making recommended.' },
-        { label: 'Elevated — 0.15–0.20 ng/mL/cc', risk: 'Elevated', riskCol: 'cr-orange',
+        { label: 'Elevated — 0.15–0.20 ng/mL/g', risk: 'Elevated', riskCol: 'cr-orange',
           desc: 'Widely cited biopsy threshold. PSAD ≥0.15 supports biopsy recommendation at PI-RADS 3 and reinforces recommendation at PI-RADS 4–5.' },
-        { label: 'High — ≥0.20 ng/mL/cc', risk: 'High', riskCol: 'cr-red',
+        { label: 'High — ≥0.20 ng/mL/g', risk: 'High', riskCol: 'cr-red',
           desc: 'Strongly supports biopsy. High PSAD in context of PI-RADS 4–5 lesion warrants urgent urology referral and targeted + systematic biopsy.' },
       ]},
       { title: 'Volume Formula', items: [
