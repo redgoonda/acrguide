@@ -2764,6 +2764,10 @@ document.querySelectorAll('[data-gl]').forEach(function(el) {
     renderForm(glId);
     document.querySelectorAll('[data-gl]').forEach(function(x) { x.classList.remove('active'); });
     document.querySelectorAll('[data-gl="' + glId + '"]').forEach(function(x) { x.classList.add('active'); });
+    // Auto-hide sidebar when clicking a welcome page organ card
+    if (el.classList.contains('organ-card')) {
+      document.body.classList.add('sidebar-hidden');
+    }
   });
 });
 
