@@ -2687,25 +2687,33 @@ function displayResult(res) {
   document.getElementById('result-extra').innerHTML = res.extra || '';
 
   var copyEl = document.getElementById('result-copy');
-  if (res.copyString) {
-    copyEl.innerHTML =
-      '<div class="copy-box mt-3">' +
-        '<div class="copy-box-label"><i class="bi bi-clipboard-fill me-1"></i>Report string' +
-          '<button class="copy-btn" id="copy-btn-trigger">Copy</button>' +
-        '</div>' +
-        '<div class="copy-box-text" id="copy-box-text">' + res.copyString + '</div>' +
-      '</div>';
-    document.getElementById('copy-btn-trigger').addEventListener('click', function() {
-      navigator.clipboard.writeText(res.copyString).then(function() {
-        var btn = document.getElementById('copy-btn-trigger');
-        btn.textContent = 'Copied!';
-        btn.classList.add('copied');
-        setTimeout(function() { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
-      });
+  var copyText = res.copyString || res.recommendation;
+  var copyLabel = res.copyString ? 'Report string' : 'Recommendation';
+  copyEl.innerHTML =
+    '<div class="copy-box mt-3">' +
+      '<div class="copy-box-label"><i class="bi bi-clipboard-fill me-1"></i>' + copyLabel +
+        '<button class="copy-btn" id="copy-btn-trigger">Copy</button>' +
+      '</div>' +
+      '<div class="copy-box-text" id="copy-box-text">' + copyText + '</div>' +
+    '</div>';
+  document.getElementById('copy-btn-trigger').addEventListener('click', function() {
+    navigator.clipboard.writeText(copyText).then(function() {
+      var btn = document.getElementById('copy-btn-trigger');
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(function() { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
     });
-  } else {
-    copyEl.innerHTML = '';
-  }
+  });
+
+  // Auto-copy to clipboard on calculation
+  navigator.clipboard.writeText(copyText).then(function() {
+    var btn = document.getElementById('copy-btn-trigger');
+    if (btn) {
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(function() { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+    }
+  }).catch(function() {}); // silently ignore if clipboard not available
 
   panel.style.display = 'block';
   panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
