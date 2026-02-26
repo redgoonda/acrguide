@@ -30,7 +30,21 @@
       width: var(--sidebar-w); overflow-y: auto;
       background: #1e2740;
       border-right: 1px solid rgba(255,255,255,.07);
+      transition: transform .25s ease, width .25s ease;
     }
+    body.sidebar-hidden #sidebar {
+      transform: translateX(calc(-1 * var(--sidebar-w)));
+    }
+    body.sidebar-hidden #main {
+      margin-left: 0;
+    }
+    #main { transition: margin-left .25s ease; }
+    #sidebar-toggle {
+      background: none; border: none; color: #8fa9c0; font-size: 1.2rem;
+      cursor: pointer; padding: .2rem .4rem; border-radius: 4px;
+      line-height: 1; margin-right: .25rem;
+    }
+    #sidebar-toggle:hover { color: #e8f4fd; background: rgba(255,255,255,.08); }
     .organ-group {}
     .organ-header {
       display: flex; align-items: center; gap: .55rem;
@@ -220,6 +234,7 @@
 
 <!-- Header -->
 <div id="header">
+  <button id="sidebar-toggle" title="Toggle sidebar"><i class="bi bi-layout-sidebar"></i></button>
   <i class="bi bi-radioactive text-info fs-5"></i>
   <div>
     <div class="logo">ACRGuide</div>

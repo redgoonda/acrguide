@@ -2751,6 +2751,11 @@ function displayResult(res) {
 
 // ─── Event wiring (script at end of body — DOM already ready) ────────────────────────────
 
+// Sidebar toggle
+document.getElementById('sidebar-toggle').addEventListener('click', function() {
+  document.body.classList.toggle('sidebar-hidden');
+});
+
 // Sidebar and welcome card clicks
 document.querySelectorAll('[data-gl]').forEach(function(el) {
   el.addEventListener('click', function(e) {
