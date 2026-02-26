@@ -802,10 +802,26 @@ const GUIDELINES = {
     link: 'https://www.acr.org/Clinical-Resources/Reporting-and-Data-Systems/PI-RADS',
     desc: 'Prostate Imaging-Reporting and Data System — multiparametric MRI (mpMRI)',
     fields: [
-      radioField('zone', 'Lesion Location', [
+      sectionField('Lesion Details'),
+      numField('lesion_size', 'Lesion Size', 'mm', 'e.g. 14', 'Longest dimension on any plane'),
+      radioField('zone', 'Zone', [
         { value: 'pz', label: 'Peripheral Zone (PZ)' },
         { value: 'tz', label: 'Transition Zone (TZ) / Central Zone' },
       ]),
+      radioField('side', 'Laterality', [
+        { value: 'right',    label: 'Right' },
+        { value: 'left',     label: 'Left' },
+        { value: 'midline',  label: 'Midline / bilateral' },
+      ]),
+      selectField('level', 'Craniocaudal Level', [
+        { value: 'apex',       label: 'Apex' },
+        { value: 'mid',        label: 'Mid gland' },
+        { value: 'base',       label: 'Base' },
+        { value: 'apex_mid',   label: 'Apex to mid' },
+        { value: 'mid_base',   label: 'Mid to base' },
+        { value: 'apex_base',  label: 'Apex to base' },
+      ]),
+      sectionField('mpMRI Scoring'),
       selectField('t2', 'T2-Weighted Score', [
         { value: '1', label: '1 — Uniform hyperintense (PZ) or uniform low/hypointense (TZ) — benign' },
         { value: '2', label: '2 — Linear, wedge-shaped, or diffuse hypointensity (PZ); or encapsulated nodule (TZ)' },
@@ -824,13 +840,13 @@ const GUIDELINES = {
         { value: 'neg', label: 'Negative (no early enhancement or diffuse enhancement)' },
         { value: 'pos', label: 'Positive (focal, earlier than or simultaneous with adjacent tissue)' },
       ]),
-
     ],
     compute(f) {
-      const t2  = parseInt(f.t2)  || 1;
-      const dwi = parseInt(f.dwi) || 1;
-      const dce = f.dce === 'pos';
-      const pz  = f.zone === 'pz';
+      const t2   = parseInt(f.t2)  || 1;
+      const dwi  = parseInt(f.dwi) || 1;
+      const dce  = f.dce === 'pos';
+      const pz   = f.zone === 'pz';
+      const size = parseFloat(f.lesion_size);
 
       let pirads;
       if (pz) {
@@ -849,16 +865,30 @@ const GUIDELINES = {
         5: { col: 'red',    label: 'PI-RADS 5', mgmt: 'Clinically significant PCa highly likely. Targeted + systematic biopsy; urology referral.' },
       };
 
-      const c    = info[pirads] || info[3];
-      const zone = pz ? 'peripheral zone' : 'transition zone';
+      const c        = info[pirads] || info[3];
+      const zone     = pz ? 'peripheral zone' : 'transition zone';
+      const dceLine  = dce ? 'positive' : 'negative';
+
+      const sideMap  = { right: 'right', left: 'left', midline: 'midline' };
+      const levelMap = {
+        apex: 'apex', mid: 'mid gland', base: 'base',
+        apex_mid: 'apex to mid gland', mid_base: 'mid gland to base', apex_base: 'apex to base',
+      };
+      const sideStr  = f.side  ? (sideMap[f.side]  || f.side)  : '';
+      const levelStr = f.level ? (levelMap[f.level] || f.level) : '';
+
+      // Build location string
+      const locParts = [sideStr, levelStr, zone].filter(Boolean);
+      const locStr   = locParts.join(' ');
+
       const notes = [
         'PI-RADS v2.1 applies to multiparametric MRI (T2WI + DWI + DCE).',
         'PSAD >0.15 ng/mL/g increases risk of clinically significant PCa; may prompt biopsy even at PI-RADS 3.',
         'Equivocal PI-RADS 3 lesions in the PZ with positive DCE should be upgraded to PI-RADS 4.',
       ];
 
-      const dceLine  = dce ? 'positive' : 'negative';
-      const copyString = `Prostate mpMRI (PI-RADS v2.1): ${c.label} lesion in the ${zone} (T2: ${t2}, DWI: ${dwi}, DCE: ${dceLine}). ${c.mgmt}`;
+      const sizeStr = !isNaN(size) ? size + ' mm ' : '';
+      const copyString = `There is a ${sizeStr}${c.label} lesion in the ${locStr} (T2: ${t2}, DWI: ${dwi}, DCE: ${dceLine}). ${c.mgmt}`;
 
       const scoreBox = `<div class="sub-result"><div class="sub-result-title">Score summary</div>
         Zone: ${pz ? 'Peripheral' : 'Transition'} &nbsp;|&nbsp; T2: ${t2} &nbsp;|&nbsp; DWI: ${dwi} &nbsp;|&nbsp; DCE: ${dce ? 'Positive' : 'Negative'} &nbsp;|&nbsp; <strong>PI-RADS: ${pirads}</strong></div>`;
